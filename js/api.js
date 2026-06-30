@@ -7,7 +7,7 @@ const HotelAPI = {
     bannedWords: null,
 
     init: async () => {
-        const res = await fetch('luquan/js/config.json');
+        const res = await fetch('/luquan/js/config.json');
         const config = await res.json();
         const host = window.location.hostname;
         const isLocal = host === 'localhost' || host === '127.0.0.1' || host.startsWith('192.168.');
@@ -18,7 +18,7 @@ const HotelAPI = {
     getBannedWords: async () => {
         if (HotelAPI.bannedWords !== null) return HotelAPI.bannedWords;
         try {
-            const res = await fetch('luquan/js/banned_words.json');
+            const res = await fetch('/luquan/js/banned_words.json');
             if (res.ok) {
                 HotelAPI.bannedWords = await res.json();
             } else {

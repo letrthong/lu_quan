@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿<!DOCTYPE html>
+﻿﻿﻿﻿﻿﻿<!DOCTYPE html>
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
@@ -88,7 +88,7 @@
         async function loadAppWithVersion() {
             try {
                 // Luôn lấy file config mới nhất từ server, không dùng cache
-                const res = await fetch('./luquan/js/config.json?t=' + new Date().getTime());
+                const res = await fetch('/luquan/js/config.json?t=' + new Date().getTime());
                 const config = await res.json();
                 const version = config.app_version || '1.0.0';
                 
@@ -114,28 +114,34 @@
                 localStorage.setItem('luquan_app_version', version);
 
                 // 1. Tải api.js
-                const apiPromise = fetch('./luquan/js/api.js?v=' + version).then(r => r.text());
+                const apiPromise = fetch('/luquan/js/api.js?v=' + version).then(r => {
+                    if (!r.ok) throw new Error(`Không thể tải api.js (HTTP ${r.status})`);
+                    return r.text();
+                });
 
                 // 2. Tải các file React/JSX song song
                 const babelScripts = [
-                    "./luquan/js/constants.js",
-                    "./luquan/js/components/Header.js",
-                    "./luquan/js/components/Icon.js",
-                    "./luquan/js/components/MapComponents.js",
-                    "./luquan/js/components/SchemaManager.js",
-                    "./luquan/js/components/HotelRequestForm.js",
-                    "./luquan/js/components/HotelEditForm.js",
-                    "./luquan/js/components/ReportManager.js",
-                    "./luquan/js/components/ReportForm.js",
-                    "./luquan/js/components/AdminTabs.js",
-                    "./luquan/js/components/Footer.js",
-                    "./luquan/js/components/HotelDetail.js",
-					"./luquan/js/components/NearByComponents.js",
-                    "./luquan/js/i18n.js",
-                    "./luquan/js/hotel_connect.js" // File chính nên ở cuối
+                    "/luquan/js/constants.js",
+                    "/luquan/js/components/Header.js",
+                    "/luquan/js/components/Icon.js",
+                    "/luquan/js/components/MapComponents.js",
+                    "/luquan/js/components/SchemaManager.js",
+                    "/luquan/js/components/HotelRequestForm.js",
+                    "/luquan/js/components/HotelEditForm.js",
+                    "/luquan/js/components/ReportManager.js",
+                    "/luquan/js/components/ReportForm.js",
+                    "/luquan/js/components/AdminTabs.js",
+                    "/luquan/js/components/Footer.js",
+                    "/luquan/js/components/HotelDetail.js",
+					"/luquan/js/components/NearByComponents.js",
+                    "/luquan/js/i18n.js",
+                    "/luquan/js/hotel_connect.js" // File chính nên ở cuối
                 ];
 
-                const babelPromises = babelScripts.map(src => fetch(src + '?v=' + version).then(r => r.text()));
+                const babelPromises = babelScripts.map(src => fetch(src + '?v=' + version).then(r => {
+                    if (!r.ok) throw new Error(`Không thể tải ${src} (HTTP ${r.status})`);
+                    return r.text();
+                }));
 
                 const [apiCode, ...babelCodes] = await Promise.all([apiPromise, ...babelPromises]);
                 
@@ -156,8 +162,10 @@
                 });
                 await waitForBabel();
 
-                // 3. Biên dịch JSX sang JS thuần bằng Babel
-                const transpiledCode = Babel.transform(combinedBabelCode, { presets: ['react'] }).code;
+                // 3. Biên dịch JSX sang JS thuần bằng Babel (sử dụng classic runtime để tránh tự động sinh ra câu lệnh import)
+                const transpiledCode = Babel.transform(combinedBabelCode, { 
+                    presets: [['react', { runtime: 'classic' }]] 
+                }).code;
                 
                 // Gộp code API và code đã biên dịch
                 const finalCode = apiCode + '\n' + transpiledCode;
@@ -176,6 +184,9 @@
 
             } catch (err) {
                 console.error("Lỗi khi tải config hoặc khởi tạo ứng dụng:", err);
+                // Xóa cache để bắt buộc trình duyệt tải lại và biên dịch ở lần chạy sau
+                localStorage.removeItem('luquan_app_version');
+                localStorage.removeItem('luquan_cached_scripts');
             }
         }
 
