@@ -5,16 +5,28 @@ CONTAINER_NAME="telua_python_flask"
 
 # Function to show usage information
 show_usage() {
-    echo "Usage: $0 [action]"
+    echo "Usage: $0 [action] [options]"
     echo ""
     echo "Actions:"
-    echo "  start         Build images (no-cache) and start containers (default)"
+    echo "  start         Build images and start containers"
+    echo "  stop          Stop and remove running containers"
     echo "  restart       Stop and start containers without rebuilding"
     echo "  access        Access the web service container's shell (bash)"
     echo "  run_unittest  Run unit tests inside the container"
     echo "  help          Show this help message"
     echo ""
-    echo "If no action is provided, 'start' will be executed."
+    echo "Options:"
+    echo "  --no-cache    Build images without using cache (applies to 'start')"
+    echo ""
+    echo "Examples:"
+    echo "  $0 start                  Build (with cache) and start containers"
+    echo "  $0 start --no-cache       Build (without cache) and start containers"
+    echo "  $0 --no-cache             Shortcut to build (without cache) and start"
+    echo "  $0 stop                   Stop running containers"
+    echo "  $0 access                 Access container bash terminal"
+    echo "  $0 run_unittest           Run tests inside container"
+    echo ""
+    echo "If no action is provided, the help menu will be displayed."
 }
 
 # Function to check if container is running
@@ -26,17 +38,48 @@ check_container_running() {
     fi
 }
 
-# Determine the action (default to 'start' if empty)
-ACTION=${1:-start}
+# Determine the action and options
+ACTION=""
+BUILD_CACHE="true"
+
+# Parse arguments
+for arg in "$@"; do
+    case "$arg" in
+        --no-cache)
+            BUILD_CACHE="false"
+            ;;
+        start|stop|restart|access|run_unittest|help|--help|-h)
+            ACTION="$arg"
+            ;;
+    esac
+done
+
+# Default behavior when no action is provided
+if [ -z "$ACTION" ]; then
+    if [ "$BUILD_CACHE" = "false" ]; then
+        ACTION="start"
+    else
+        ACTION="help"
+    fi
+fi
 
 case "$ACTION" in
     start)
         echo "--> Stopping existing containers..."
         docker compose down
-        echo "--> Building images with --no-cache..."
-        docker compose build --no-cache
+        if [ "$BUILD_CACHE" = "false" ]; then
+            echo "--> Building images with --no-cache..."
+            docker compose build --no-cache
+        else
+            echo "--> Building images (using cache)..."
+            docker compose build
+        fi
         echo "--> Starting containers..."
         docker compose up
+        ;;
+    stop)
+        echo "--> Stopping containers..."
+        docker compose down
         ;;
     restart)
         echo "--> Stopping existing containers..."
