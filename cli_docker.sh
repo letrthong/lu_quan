@@ -118,7 +118,7 @@ case "$ACTION" in
     js_unittest)
         check_container_running
         echo "--> Running JS unit tests inside container ($CONTAINER_NAME)..."
-        docker exec -it "$CONTAINER_NAME" node --test js/unittest
+        docker exec -it "$CONTAINER_NAME" node --test --test-reporter=spec js/unittest
         ;;
     help|--help|-h)
         show_usage

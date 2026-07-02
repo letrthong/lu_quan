@@ -21,7 +21,10 @@ reports_lock = Lock()
 def get_hotel_file_path(location_name, schemas):
     for schema in schemas:
         if schema.get(HotelField.LOCATION) == location_name:
-            return os.path.join(CONFIG_DIR, schema.get(HotelField.FILE_PATH_ID))
+            file_path_id = schema.get(HotelField.FILE_PATH_ID)
+            if not file_path_id:
+                return None
+            return os.path.join(CONFIG_DIR, file_path_id)
     return None
 
 def read_requests():

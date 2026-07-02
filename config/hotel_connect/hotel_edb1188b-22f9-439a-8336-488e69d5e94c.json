@@ -1,0 +1,19 @@
+[
+    {
+        "id": "d33b1f1d-61fa-4671-a8e4-a1debf036f33",
+        "name": "sssssssss",
+        "type": "hotel",
+        "address": "ZGRmZHNzZnNkZiBkZmRm",
+        "phone": "MDM1NjE0ODAwOA==",
+        "website": "aHR0cHM6Ly96bmV3cy52bi9p",
+        "locationId": "20b903ca-2d56-4781-8609-1673c39594b9",
+        "status": "approved",
+        "rating": 5,
+        "createdAt": "2026-04-10",
+        "updatedAt": "2026-04-10",
+        "description": "VOG6oWkgbeG7mXQgc+G7kSBxdeG7kWMgZ2lhLCB4ZSDEkWnhu4duIMSRxrDhu6NjIHhlbSBsw6AgbeG7mXQgcGjhuqduIGPhu6dhIGNoaeG6v24gbMaw4bujYyBhbiBuaW5oIG7Eg25nIGzGsOG7o25nIHbDoCBwaMOhdCB0cmnhu4NuIGLhu4FuIHbhu69uZy4gw5RuZyBuaMOsbiBuaOG6rW4gdmFpIHRyw7IgY+G7p2EgeGUgxJFp4buHbiB0cm9uZyBi4bupYyB0cmFuaCBnaWFvIHRow7RuZyBj4bunYSBWaeG7h3QgTmFtIHJhIHNhbz8=",
+        "image": "https://images.unsplash.com/photo-1542314831-068cd1dbfeeb?auto=format&fit=crop&q=80&w=600",
+        "lat": 10.775525,
+        "lng": 106.702105
+    }
+]

@@ -1,37 +1,17 @@
-import React, { useState } from 'react';
+import React from 'react';
 import Icon from './Icon';
-import HotelAPI from '../api';
+import { useReportForm } from '../hooks/useReportForm';
 
 const ReportForm = ({ hotelId, hotelName, onClose, onToast }) => {
-    const [reason, setReason] = useState("");
-    const [details, setDetails] = useState("");
-    const [isSubmitting, setIsSubmitting] = useState(false);
-    const [error, setError] = useState(null);
-
-    const handleSubmit = async (e) => {
-        e.preventDefault();
-        if (!reason) {
-            setError("Vui lòng chọn lý do báo cáo.");
-            return;
-        }
-        
-        setIsSubmitting(true);
-        setError(null);
-
-        try {
-            await HotelAPI.submitReport({
-                hotelId: hotelId,
-                reason: reason,
-                details: details,
-            });
-            onToast(`Đã gửi báo cáo cho "${hotelName}". Cảm ơn bạn!`);
-            onClose();
-        } catch (err) {
-            setError(err.message || "Không thể gửi báo cáo. Vui lòng thử lại.");
-        } finally {
-            setIsSubmitting(false);
-        }
-    };
+    const {
+        reason,
+        setReason,
+        details,
+        setDetails,
+        isSubmitting,
+        error,
+        handleSubmit
+    } = useReportForm(hotelId, hotelName, onClose, onToast);
 
     return (
         <div className="fixed inset-0 bg-stone-900/80 backdrop-blur-md z-[110] flex items-center justify-center sm:p-6 pointer-events-auto" onMouseDown={onClose}>

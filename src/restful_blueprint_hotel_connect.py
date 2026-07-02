@@ -255,7 +255,10 @@ def submit_hotel_report():
     with schema_lock:
         schemas = services.read_schema()
         for schema in schemas:
-            file_path = os.path.join(CONFIG_DIR, schema.get(HotelField.FILE_PATH_ID))
+            file_path_id = schema.get(HotelField.FILE_PATH_ID)
+            if not file_path_id:
+                continue
+            file_path = os.path.join(CONFIG_DIR, file_path_id)
             if os.path.exists(file_path):
                 try:
                     with open(file_path, 'r', encoding='utf-8') as f:
@@ -374,7 +377,10 @@ def get_hotels_by_status(status_name):
     with schema_lock:
         schemas = services.read_schema()
         for schema in schemas:
-            file_path = os.path.join(CONFIG_DIR, schema.get(HotelField.FILE_PATH_ID))
+            file_path_id = schema.get(HotelField.FILE_PATH_ID)
+            if not file_path_id:
+                continue
+            file_path = os.path.join(CONFIG_DIR, file_path_id)
             if os.path.exists(file_path):
                 try:
                     with open(file_path, 'r', encoding='utf-8') as f:
@@ -406,7 +412,10 @@ def set_hotel_status(hotel_id):
         hotel_found, target_file, city_hotels, updated_hotel = False, None, [], None
 
         for schema in schemas:
-            file_path = os.path.join(CONFIG_DIR, schema.get(HotelField.FILE_PATH_ID))
+            file_path_id = schema.get(HotelField.FILE_PATH_ID)
+            if not file_path_id:
+                continue
+            file_path = os.path.join(CONFIG_DIR, file_path_id)
             if os.path.exists(file_path):
                 with open(file_path, 'r', encoding='utf-8') as f:
                     hotels = json.load(f)
@@ -477,7 +486,10 @@ def update_hotel(hotel_id):
         city_hotels = []
 
         for schema in schemas:
-            file_path = os.path.join(CONFIG_DIR, schema.get(HotelField.FILE_PATH_ID))
+            file_path_id = schema.get(HotelField.FILE_PATH_ID)
+            if not file_path_id:
+                continue
+            file_path = os.path.join(CONFIG_DIR, file_path_id)
             if os.path.exists(file_path):
                 with open(file_path, 'r', encoding='utf-8') as f:
                     try:
@@ -520,7 +532,10 @@ def delete_hotel(hotel_id):
         city_hotels = []
 
         for schema in schemas:
-            file_path = os.path.join(CONFIG_DIR, schema.get(HotelField.FILE_PATH_ID))
+            file_path_id = schema.get(HotelField.FILE_PATH_ID)
+            if not file_path_id:
+                continue
+            file_path = os.path.join(CONFIG_DIR, file_path_id)
             if os.path.exists(file_path):
                 with open(file_path, 'r', encoding='utf-8') as f:
                     try:

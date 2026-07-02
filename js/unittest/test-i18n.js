@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert';
-import { TRANSLATIONS } from '../i18n.js';
+import { TRANSLATIONS } from '../translations.js';
 
 test('i18n - supported languages', (t) => {
     const langs = Object.keys(TRANSLATIONS);

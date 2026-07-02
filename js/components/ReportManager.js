@@ -1,81 +1,26 @@
-import React, { useState, useMemo } from 'react';
+import React from 'react';
 import Icon from './Icon';
-import HotelAPI from '../api';
 import { REPORT_REASONS, getReasonText } from '../constants';
+import { useReportManager } from '../hooks/useReportManager';
 
 const ReportManager = ({ reports, setFilterCity, onToast, onProcessReport, onReportDeleted }) => {
-    const [expandedHotelId, setExpandedHotelId] = useState(null);
-    const [detailedReports, setDetailedReports] = useState([]);
-    const [isLoadingDetails, setIsLoadingDetails] = useState(false);
-    const [sortBy, setSortBy] = useState('newest'); // 'newest' | 'count'
-    const [filterReason, setFilterReason] = useState('');
-
-    const handleGoToHotel = (locationName) => {
-        if (locationName && locationName !== "Không rõ") {
-            setFilterCity(locationName);
-            onToast(`Đã chuyển đến khu vực "${locationName}".`);
-        } else {
-            onToast("Không thể xác định khu vực của lữ quán này.");
-        }
-    };
-
-    const handleToggleDetails = async (hotelId) => {
-        if (expandedHotelId === hotelId) {
-            setExpandedHotelId(null);
-            setDetailedReports([]);
-            return;
-        }
-
-        setIsLoadingDetails(true);
-        try {
-            const details = await HotelAPI.fetchReportsForHotel(hotelId);
-            setDetailedReports(details);
-            setExpandedHotelId(hotelId);
-        } catch (error) {
-            onToast(error.message || "Không thể tải chi tiết báo cáo.");
-            console.error(error);
-        } finally {
-            setIsLoadingDetails(false);
-        }
-    };
-
-    const handleDeleteReport = async (reportId) => {
-        if (!window.confirm("Bạn có chắc chắn muốn xóa báo cáo này?")) return;
-        try {
-            await HotelAPI.deleteReport(reportId);
-            onToast("Đã xóa báo cáo thành công.");
-            
-            const newDetails = detailedReports.filter(r => r.reportId !== reportId);
-            setDetailedReports(newDetails);
-            if (newDetails.length === 0) {
-                setExpandedHotelId(null);
-            }
-            if (onReportDeleted) onReportDeleted();
-        } catch (error) {
-            onToast(error.message || "Lỗi khi xóa báo cáo.");
-        }
-    };
+    const {
+        expandedHotelId,
+        detailedReports,
+        isLoadingDetails,
+        sortBy,
+        setSortBy,
+        filterReason,
+        setFilterReason,
+        handleGoToHotel,
+        handleToggleDetails,
+        handleDeleteReport,
+        processedReports
+    } = useReportManager(reports, setFilterCity, onToast, onReportDeleted);
 
     if (!reports || reports.length === 0) {
         return <div className="p-8 text-center text-stone-500 italic">Chưa có báo cáo nào.</div>;
     }
-
-    const processedReports = useMemo(() => {
-        if (!reports) return [];
-        let result = [...reports];
-        
-        if (filterReason) {
-            result = result.filter(r => r.reason === filterReason);
-        }
-        
-        if (sortBy === 'count') {
-            result.sort((a, b) => (b.reportCount || 1) - (a.reportCount || 1));
-        } else {
-            result.sort((a, b) => new Date(b.reportedAt) - new Date(a.reportedAt));
-        }
-        
-        return result;
-    }, [reports, filterReason, sortBy]);
 
     return (
         <div className="p-3 space-y-3">

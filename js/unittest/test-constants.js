@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert';
-import { HOTEL_TYPES, OPTIONAL_PHONE_TYPES, getIconForHotelType } from '../constants.js';
+import { HOTEL_TYPES, OPTIONAL_PHONE_TYPES, getIconForHotelType, REPORT_REASONS, getReasonText } from '../constants.js';
 
 test('constants - HOTEL_TYPES structure', (t) => {
     assert.ok(Array.isArray(HOTEL_TYPES));
@@ -17,4 +17,16 @@ test('constants - getIconForHotelType mapping', (t) => {
     assert.strictEqual(getIconForHotelType('hotel'), 'building');
     assert.strictEqual(getIconForHotelType('restaurant'), 'utensils');
     assert.strictEqual(getIconForHotelType('nonexistent'), 'map-pin');
+});
+
+test('constants - REPORT_REASONS structure', (t) => {
+    assert.ok(REPORT_REASONS);
+    assert.strictEqual(REPORT_REASONS.wrong_phone, 'Số điện thoại sai');
+    assert.strictEqual(REPORT_REASONS.other, 'Lý do khác');
+});
+
+test('constants - getReasonText mapping', (t) => {
+    assert.strictEqual(getReasonText('wrong_phone'), 'Số điện thoại sai');
+    assert.strictEqual(getReasonText('other'), 'Lý do khác');
+    assert.strictEqual(getReasonText('unknown_reason_code'), 'unknown_reason_code');
 });

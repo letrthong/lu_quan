@@ -1,0 +1,22 @@
+[
+    {
+        "id": "17af2dd3-5f44-4aba-b25f-2ca3aa83abbc",
+        "filePathId": "hotel_08bff071-4908-423f-a7d9-c894717c5657.json",
+        "locationName": "Đà Lạt",
+        "lat": 11.940242,
+        "lng": 108.437576,
+        "radius": 5,
+        "createdAt": "2026-03-31",
+        "updatedAt": "2026-04-13"
+    },
+    {
+        "id": "20b903ca-2d56-4781-8609-1673c39594b9",
+        "filePathId": "hotel_edb1188b-22f9-439a-8336-488e69d5e94c.json",
+        "locationName": "Ho cho Minh",
+        "lat": 10.775525,
+        "lng": 106.702105,
+        "radius": 2,
+        "createdAt": "2026-04-10",
+        "updatedAt": "2026-04-10"
+    }
+]
