@@ -1,13 +1,8 @@
 import React, { useState, useCallback, useMemo } from 'react'; 
 import Icon from './Icon';
 import ReportForm from './ReportForm';
-import { HOTEL_TYPES, getIconForHotelType } from '../constants';
+import { HOTEL_TYPES, getIconForHotelType, getTypeLabel } from '../constants';
 import { decodeBase64 } from '../utils';
-
-const getTypeLabel = (type) => {
-    const found = HOTEL_TYPES.find(t => t.id === type);
-    return found ? found.label : type;
-};
 
 const StatusBadge = ({ status }) => {
     switch (status) {

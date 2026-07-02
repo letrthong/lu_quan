@@ -1,7 +1,7 @@
 import React from 'react';
 import Icon from './Icon';
 import { LocationPickerMap } from './MapComponents';
-import { HOTEL_TYPES } from '../constants';
+import { HOTEL_TYPES, OPTIONAL_PHONE_TYPES } from '../constants';
 import { useHotelRequestForm } from '../hooks/useHotelRequestForm';
 
 const HotelRequestForm = ({ provinces, onClose, onSubmitSuccess, onToast }) => {

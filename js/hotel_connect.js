@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
+import React, { useCallback } from 'react';
 import ReactDOM from 'react-dom/client';
 import Icon from './components/Icon';
 import Header from './components/Header';
@@ -11,10 +11,13 @@ import HotelEditForm from './components/HotelEditForm';
 import ReportManager from './components/ReportManager';
 import HotelDetail from './components/HotelDetail';
 import NearByComponents from './components/NearByComponents';
-import { HOTEL_TYPES, OPTIONAL_PHONE_TYPES, getIconForHotelType, getReasonText } from './constants';
+import RegionMultiSelect from './components/RegionMultiSelect';
+import TypeMultiSelect from './components/TypeMultiSelect';
+import { HOTEL_TYPES, getIconForHotelType, getReasonText, getTypeLabel } from './constants';
 import { LanguageProvider, useTranslation } from './i18n';
 import HotelAPI from './api';
-import { decodeBase64, encodeBase64, processImageUpload, isValidPhoneNumber, calculateDistance } from './utils';
+import { decodeBase64 } from './utils';
+import { useHotelConnectApp } from './hooks/useHotelConnectApp';
 
 // Polyfill for crypto.randomUUID() in non-secure contexts or older browsers
 if (window.crypto && !window.crypto.randomUUID) {
@@ -27,854 +30,72 @@ if (window.crypto && !window.crypto.randomUUID) {
 
 const FALLBACK_IMAGE_URL = "https://images.unsplash.com/photo-1542314831-068cd1dbfeeb?auto=format&fit=crop&q=80&w=600";
 const handleImageError = (e) => {
-    // Prevent infinite loop if fallback image is also broken
     e.target.onerror = null;
     e.target.src = FALLBACK_IMAGE_URL;
 };
 
-// Hàm tiện ích hỗ trợ loại bỏ dấu tiếng Việt để tìm kiếm
-const removeVietnameseTones = (str) => {
-    if (!str) return "";
-    // Tách dấu, xóa dấu, đổi đ/Đ thành d/D, chuyển chữ thường và xóa khoảng trắng thừa
-    return str.normalize('NFD')
-              .replace(/[\u0300-\u036f]/g, '')
-              .replace(/đ/g, 'd').replace(/Đ/g, 'D')
-              .toLowerCase()
-              .replace(/\s+/g, ' ').trim();
-};
-
-// Custom Component: Multi-Select cho Khu vực
-const RegionMultiSelect = ({ provinces, selectedIds, onChange, t }) => {
-    const [isOpen, setIsOpen] = useState(false);
-    const [searchQuery, setSearchQuery] = useState("");
-    const dropdownRef = useRef(null);
-
-    useEffect(() => {
-        const handleClickOutside = (event) => {
-            if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
-                setIsOpen(false);
-                setSearchQuery(""); // Reset tìm kiếm khi đóng dropdown
-            }
-        };
-        document.addEventListener("mousedown", handleClickOutside);
-        return () => document.removeEventListener("mousedown", handleClickOutside);
-    }, []);
-
-    const toggleSelection = (id) => {
-        let newSelection = [...selectedIds];
-        if (id === 'all') {
-            newSelection = newSelection.includes('all') ? [] : ['all'];
-        } else {
-            newSelection = newSelection.filter(v => v !== 'all');
-            if (newSelection.includes(id)) {
-                newSelection = newSelection.filter(v => v !== id);
-            } else {
-                newSelection.push(id);
-            }
-        }
-        onChange(newSelection);
-    };
-
-    const getDisplayText = () => {
-        if (selectedIds.length === 0) return t('select_region');
-        if (selectedIds.includes('all')) return t('all_regions');
-        if (selectedIds.length === 1) {
-            const p = provinces.find(p => p.id === selectedIds[0]);
-            return p ? p.locationName : t('select_region');
-        }
-        return `Đã chọn ${selectedIds.length} khu vực`;
-    };
-
-    // Lọc danh sách tỉnh/thành dựa trên từ khóa tìm kiếm (hỗ trợ không dấu)
-    const filteredProvinces = useMemo(() => {
-        if (!searchQuery) return provinces;
-        const normalizedSearch = removeVietnameseTones(searchQuery);
-        return provinces.filter(p => 
-            removeVietnameseTones(p.locationName).includes(normalizedSearch)
-        );
-    }, [provinces, searchQuery]);
-
-    return (
-        <div className="relative w-full" ref={dropdownRef}>
-            <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-orange-700 pointer-events-none">
-                <Icon name="map" size={14} />
-            </div>
-            <div 
-                onClick={() => setIsOpen(!isOpen)}
-                className="w-full pl-10 pr-16 py-2.5 bg-white rounded-xl border-2 border-stone-100 hover:border-stone-200 outline-none transition-all font-bold text-xs text-stone-600 cursor-pointer flex items-center justify-between select-none"
-            >
-                <span className="truncate">{getDisplayText()}</span>
-            </div>
-            <div className="absolute right-1.5 top-1/2 -translate-y-1/2 flex items-center">
-                {selectedIds.length > 0 && (
-                    <button 
-                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); onChange([]); }}
-                        className="p-1.5 text-stone-300 hover:text-red-500 hover:bg-red-50 rounded-md transition-all active:scale-95"
-                        title="Bỏ chọn tất cả"
-                    >
-                        <Icon name="x" size={14} />
-                    </button>
-                )}
-                <div onClick={(e) => { e.stopPropagation(); setIsOpen(!isOpen); }} className="p-1.5 text-stone-400 cursor-pointer hover:text-stone-600 transition-transform duration-200" style={{ transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)' }} title={isOpen ? "Đóng" : "Mở"}>
-                    <Icon name="chevron-down" size={16} />
-                </div>
-            </div>
-            
-            {isOpen && (
-                <div className="absolute z-50 w-full mt-1 bg-white border border-stone-200 rounded-xl shadow-xl max-h-[60vh] flex flex-col animate-in fade-in slide-in-from-top-2 duration-200 overflow-hidden">
-                    <div className="px-3 py-2 border-b border-stone-100 bg-stone-50 flex justify-between items-center shrink-0">
-                        <span className="text-[10px] font-black text-stone-500 uppercase tracking-widest">
-                            {selectedIds.length > 0 ? `${selectedIds.length} đã chọn` : 'Khu vực'}
-                        </span>
-                        {selectedIds.length > 0 && (
-                            <button 
-                                onClick={(e) => { e.stopPropagation(); onChange([]); }}
-                                className="text-[10px] text-red-600 font-bold hover:text-red-800 bg-red-50 hover:bg-red-100 px-2 py-1 rounded-md transition-colors flex items-center gap-1 uppercase tracking-widest active:scale-95"
-                            >
-                                <Icon name="trash-2" size={12} /> Bỏ chọn
-                            </button>
-                        )}
-                    </div>
-                    
-                    {/* Ô tìm kiếm nhanh */}
-                    <div className="p-2 border-b border-stone-100 bg-white sticky top-0 z-10">
-                        <div className="relative">
-                            <div className="absolute left-2.5 top-1/2 -translate-y-1/2 text-stone-400 pointer-events-none">
-                                <Icon name="search" size={12} />
-                            </div>
-                            <input 
-                                type="text"
-                                placeholder="Tìm khu vực..."
-                                value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
-                                onClick={(e) => e.stopPropagation()} // Ngăn việc click vào input làm đóng dropdown
-                                className="w-full pl-7 pr-7 py-1.5 bg-stone-50 border border-stone-200 rounded-lg text-xs font-bold text-stone-700 focus:outline-none focus:border-orange-500 focus:bg-white transition-colors"
-                            />
-                            {searchQuery && (
-                                <button 
-                                    onClick={(e) => { e.stopPropagation(); setSearchQuery(""); }}
-                                    className="absolute right-2 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-600 p-1"
-                                >
-                                    <Icon name="x" size={10} />
-                                </button>
-                            )}
-                        </div>
-                    </div>
-
-                    <div className="overflow-y-auto py-1">
-                    {/* Ẩn nút "Tất cả khu vực" nếu đang tìm kiếm cụ thể */}
-                    {!searchQuery && (
-                        <div 
-                            className="px-4 py-2.5 hover:bg-stone-50 cursor-pointer flex items-center gap-3 text-xs font-bold text-stone-700 transition-colors"
-                            onClick={(e) => { e.stopPropagation(); toggleSelection('all'); }}
-                        >
-                            <div className={`w-4 h-4 rounded border flex items-center justify-center transition-colors ${selectedIds.includes('all') ? 'bg-orange-700 border-orange-700 text-white' : 'border-stone-300 bg-white'}`}>
-                                {selectedIds.includes('all') && <Icon name="check" size={12} />}
-                            </div>
-                            {t('all_regions')}
-                        </div>
-                    )}
-                    {filteredProvinces.length > 0 ? (
-                        filteredProvinces.map(p => (
-                            <div 
-                                key={p.id}
-                                className="px-4 py-2.5 hover:bg-stone-50 cursor-pointer flex items-center gap-3 text-xs font-bold text-stone-700 transition-colors"
-                                onClick={(e) => { e.stopPropagation(); toggleSelection(p.id); }}
-                            >
-                                <div className={`w-4 h-4 rounded border flex items-center justify-center transition-colors ${selectedIds.includes(p.id) ? 'bg-orange-700 border-orange-700 text-white' : 'border-stone-300 bg-white'}`}>
-                                    {selectedIds.includes(p.id) && <Icon name="check" size={12} />}
-                                </div>
-                                {p.locationName}
-                            </div>
-                        ))
-                    ) : (
-                        <div className="px-4 py-4 text-center text-xs text-stone-500 font-medium italic">
-                            Không tìm thấy khu vực nào
-                        </div>
-                    )}
-                    </div>
-
-                    <div className="p-2 border-t border-stone-100 bg-white shrink-0 relative z-10 shadow-[0_-8px_15px_-3px_rgba(0,0,0,0.05)]">
-                        <button onClick={(e) => { e.stopPropagation(); setIsOpen(false); }} className="w-full py-2 bg-stone-100 hover:bg-stone-200 text-stone-700 rounded-lg text-[11px] font-black uppercase tracking-widest flex items-center justify-center gap-2 transition-all active:scale-95 shadow-sm hover:shadow-md">
-                            Đóng <Icon name="x" size={14} />
-                        </button>
-                    </div>
-                </div>
-            )}
-        </div>
-    );
-};
-
-// Custom Component: Multi-Select cho Loại hình
-const TypeMultiSelect = ({ types, selectedIds, onChange, t }) => {
-    const [isOpen, setIsOpen] = useState(false);
-    const dropdownRef = useRef(null);
-
-    useEffect(() => {
-        const handleClickOutside = (event) => {
-            if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
-                setIsOpen(false);
-            }
-        };
-        document.addEventListener("mousedown", handleClickOutside);
-        return () => document.removeEventListener("mousedown", handleClickOutside);
-    }, []);
-
-    const toggleSelection = (id) => {
-        let newSelection = [...selectedIds];
-        if (id === 'all') {
-            newSelection = newSelection.includes('all') ? [] : ['all'];
-        } else {
-            newSelection = newSelection.filter(v => v !== 'all');
-            if (newSelection.includes(id)) {
-                newSelection = newSelection.filter(v => v !== id);
-            } else {
-                newSelection.push(id);
-            }
-        }
-        onChange(newSelection);
-    };
-
-    const getDisplayText = () => {
-        if (selectedIds.length === 0) return "Chọn loại hình";
-        if (selectedIds.includes('all')) return t('all_types') || "Tất cả loại hình";
-        if (selectedIds.length === 1) {
-            const type = types.find(t => t.id === selectedIds[0]);
-            return type ? type.label : "Chọn loại hình";
-        }
-        return `Đã chọn ${selectedIds.length} loại hình`;
-    };
-
-    return (
-        <div className="relative w-full" ref={dropdownRef}>
-            <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-orange-700 pointer-events-none">
-                <Icon name="layers" size={14} />
-            </div>
-            <div 
-                onClick={() => setIsOpen(!isOpen)}
-                className="w-full pl-10 pr-16 py-2.5 bg-white rounded-xl border-2 border-stone-100 hover:border-stone-200 outline-none transition-all font-bold text-xs text-stone-600 cursor-pointer flex items-center justify-between select-none"
-            >
-                <span className="truncate">{getDisplayText()}</span>
-            </div>
-            <div className="absolute right-1.5 top-1/2 -translate-y-1/2 flex items-center">
-                {selectedIds.length > 0 && (
-                    <button 
-                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); onChange([]); }}
-                        className="p-1.5 text-stone-300 hover:text-red-500 hover:bg-red-50 rounded-md transition-all active:scale-95"
-                        title="Bỏ chọn tất cả"
-                    >
-                        <Icon name="x" size={14} />
-                    </button>
-                )}
-                <div onClick={(e) => { e.stopPropagation(); setIsOpen(!isOpen); }} className="p-1.5 text-stone-400 cursor-pointer hover:text-stone-600 transition-transform duration-200" style={{ transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)' }} title={isOpen ? "Đóng" : "Mở"}>
-                    <Icon name="chevron-down" size={16} />
-                </div>
-            </div>
-            
-            {isOpen && (
-                <div className="absolute z-50 w-full mt-1 bg-white border border-stone-200 rounded-xl shadow-xl max-h-[60vh] flex flex-col animate-in fade-in slide-in-from-top-2 duration-200 overflow-hidden">
-                    <div className="px-3 py-2 border-b border-stone-100 bg-stone-50 flex justify-between items-center shrink-0">
-                        <span className="text-[10px] font-black text-stone-500 uppercase tracking-widest">
-                            {selectedIds.length > 0 ? `${selectedIds.length} đã chọn` : 'Loại hình'}
-                        </span>
-                        {selectedIds.length > 0 && (
-                            <button 
-                                onClick={(e) => { e.stopPropagation(); onChange([]); }}
-                                className="text-[10px] text-red-600 font-bold hover:text-red-800 bg-red-50 hover:bg-red-100 px-2 py-1 rounded-md transition-colors flex items-center gap-1 uppercase tracking-widest active:scale-95"
-                            >
-                                <Icon name="trash-2" size={12} /> Bỏ chọn
-                            </button>
-                        )}
-                    </div>
-                    <div className="overflow-y-auto py-1">
-                        <div 
-                            className="px-4 py-2.5 hover:bg-stone-50 cursor-pointer flex items-center gap-3 text-xs font-bold text-stone-700 transition-colors"
-                            onClick={(e) => { e.stopPropagation(); toggleSelection('all'); }}
-                        >
-                            <div className={`w-4 h-4 rounded border flex items-center justify-center transition-colors ${selectedIds.includes('all') ? 'bg-orange-700 border-orange-700 text-white' : 'border-stone-300 bg-white'}`}>
-                                {selectedIds.includes('all') && <Icon name="check" size={12} />}
-                            </div>
-                            {t('all_types') || "Tất cả loại hình"}
-                        </div>
-                        {types.map(type => (
-                            <div 
-                                key={type.id}
-                                className="px-4 py-2.5 hover:bg-stone-50 cursor-pointer flex items-center gap-3 text-xs font-bold text-stone-700 transition-colors"
-                                onClick={(e) => { e.stopPropagation(); toggleSelection(type.id); }}
-                            >
-                                <div className={`w-4 h-4 rounded border flex items-center justify-center transition-colors ${selectedIds.includes(type.id) ? 'bg-orange-700 border-orange-700 text-white' : 'border-stone-300 bg-white'}`}>
-                                    {selectedIds.includes(type.id) && <Icon name="check" size={12} />}
-                                </div>
-                                <div className="flex items-center gap-2">
-                                    <Icon name={getIconForHotelType(type.id)} size={12} className="text-stone-400" />
-                                    <span>{type.label}</span>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                    
-                    <div className="p-2 border-t border-stone-100 bg-white shrink-0 relative z-10 shadow-[0_-8px_15px_-3px_rgba(0,0,0,0.05)]">
-                        <button onClick={(e) => { e.stopPropagation(); setIsOpen(false); }} className="w-full py-2 bg-stone-100 hover:bg-stone-200 text-stone-700 rounded-lg text-[11px] font-black uppercase tracking-widest flex items-center justify-center gap-2 transition-all active:scale-95 shadow-sm hover:shadow-md">
-                            Đóng <Icon name="x" size={14} />
-                        </button>
-                    </div>
-                </div>
-            )}
-        </div>
-    );
-};
-
 const MainApp = () => {
-    const { t, lang, changeLang } = useTranslation();
-    const [hotels, setHotels] = useState([]);
-    const [provinces, setProvinces] = useState([]);
-    const [isLoading, setIsLoading] = useState(false);
-    const [pendingRequests, setPendingRequests] = useState([]);
-    const [searchTerm, setSearchTerm] = useState("");
-    const [filterLocationIds, setFilterLocationIds] = useState(() => {
-        const urlParams = new URLSearchParams(window.location.search);
-        let urlLocs = urlParams.get('locationIds');
-        if (!urlLocs && urlParams.get('locationId')) {
-            urlLocs = urlParams.get('locationId'); // Tương thích URL cũ
-        }
-        if (urlLocs) return urlLocs.split(',');
-        const savedLocs = localStorage.getItem('luquan_last_selected_locationIds');
-        if (savedLocs) { try { return JSON.parse(savedLocs); } catch (e) { return []; } }
-        const oldSavedLoc = localStorage.getItem('luquan_last_selected_locationId');
-        if (oldSavedLoc) return [oldSavedLoc]; // Tương thích Cache cũ
-        return [];
-    });
-    const [filterTypeIds, setFilterTypeIds] = useState(() => {
-        const urlParams = new URLSearchParams(window.location.search);
-        const urlTypes = urlParams.get('typeIds');
-        if (urlTypes) return urlTypes.split(',');
-
-        const savedTypes = localStorage.getItem('luquan_last_selected_typeIds');
-        if (savedTypes) { try { return JSON.parse(savedTypes); } catch (e) { return ['all']; } }
-        const oldType = localStorage.getItem('luquan_last_selected_type');
-        if (oldType) return [oldType]; // Tương thích Cache cũ
-        return ['all'];
-    });
-    const [selectedHotel, setSelectedHotel] = useState(null);
-    const [showRequestForm, setShowRequestForm] = useState(false);
-    const [showSchemaManager, setShowSchemaManager] = useState(false);
-    const [showAboutDialog, setShowAboutDialog] = useState(false);
-    const [viewMode, setViewMode] = useState('list'); // 'list' or 'map'
-    const [isAdmin, setIsAdmin] = useState(false);
-    const [showAdminLogin, setShowAdminLogin] = useState(false);
-    const [adminPass, setAdminPass] = useState("");
-    const [adminError, setAdminError] = useState("");
-    const [adminTab, setAdminTab] = useState('approved');
-    const [pendingReviewHotels, setPendingReviewHotels] = useState([]);
-    const [reports, setReports] = useState([]);
-    const [editingHotel, setEditingHotel] = useState(null);
-    const [toastMessage, setToastMessage] = useState("");
-    const [reviewConfirm, setReviewConfirm] = useState(null); // { action: 'approve' | 'reject' | 'restore', hotel: object }
-
-    // Tự động Load dữ liệu từ Backend khi ứng dụng khởi chạy
-    useEffect(() => {
-        // Chỉ tải danh sách các tỉnh/thành phố khi khởi động
-        HotelAPI.getSchemas()
-            .then(provincesData => {
-                setProvinces(provincesData);
-            })
-            .catch(error => {
-                console.error("Lỗi khi tải danh sách tỉnh:", error);
-                setProvinces([]);
-            });
-    }, []); // Chạy 1 lần duy nhất khi component mount
-
-    // Nạp lại danh sách Tỉnh/Thành phố sau khi đóng Modal quản lý khu vực
-    // (để đảm bảo dropdown filter lấy được dữ liệu mới nếu có thay đổi)
-    useEffect(() => {
-        if (!showSchemaManager) {
-            HotelAPI.getSchemas()
-                .then(provincesData => setProvinces(provincesData))
-                .catch(console.error);
-        }
-    }, [showSchemaManager]);
-
-    // Load danh sách Pending Requests khi đăng nhập bằng quyền Admin
-    useEffect(() => {
-        if (isAdmin) {
-            HotelAPI.fetchPendingRequests()
-                .then(data => setPendingRequests(data))
-                .catch(err => console.error("Lỗi khi tải danh sách chờ duyệt:", err));
-            HotelAPI.fetchReports()
-                .then(data => setReports(data))
-                .catch(err => {
-                    console.error("Lỗi khi tải danh sách báo cáo:", err);
-                    setToastMessage(err.message || "Không thể tải báo cáo.");
-                });
-            Promise.all([
-                HotelAPI.fetchHotelsByStatus('pending_review'),
-                HotelAPI.fetchHotelsByStatus('reported')
-            ]).then(([pending, reported]) => {
-                const combined = [...pending, ...reported].sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
-                setPendingReviewHotels(combined);
-            }).catch(err => {
-                console.error("Lỗi khi tải danh sách cần review:", err);
-                setToastMessage(err.message || "Không thể tải danh sách cần review.");
-            });
-        }
-    }, [isAdmin]);
-
-    // Hàm tiện ích (helper) để lấy tên Thành phố từ locationId
-    const getLocationNameById = (locationId) => {
-        const province = provinces.find(p => p.id === locationId);
-        return province ? province.locationName : "Không rõ";
-    };
-
-    // Tải dữ liệu khách sạn khi người dùng thay đổi bộ lọc thành phố
-    useEffect(() => {
-        // Lưu lựa chọn mới vào Local Storage để ghi nhớ cho lần sau
-        localStorage.setItem('luquan_last_selected_locationIds', JSON.stringify(filterLocationIds));
-
-        // Không chạy nếu chưa có danh sách tỉnh
-        if (provinces.length === 0 && filterLocationIds.length > 0) return; // Chờ cho danh sách tỉnh được tải xong
-
-        let ignore = false; // Cờ kiểm soát: đánh dấu xem effect này còn hợp lệ không
-
-        // Nếu không chọn thành phố nào, danh sách khách sạn sẽ rỗng
-        if (filterLocationIds.length === 0) {
-            setHotels([]);
-            setSelectedHotel(null);
-            return;
-        }
-
-        setIsLoading(true);
-        setHotels([]);
-
-        const loadHotels = async () => {
-            let accumulatedHotels = [];
-
-            const filePathsToFetch = filterLocationIds.includes("all")
-                ? provinces.map(p => p.filePathId).filter(Boolean)
-                : provinces.filter(p => filterLocationIds.includes(p.id)).map(p => p.filePathId).filter(Boolean);
-
-            // Load từng file một để hiện dần
-            for (const filePath of filePathsToFetch) {
-                if (ignore) break; // Nếu người dùng thao tác mới, dừng ngay vòng lặp tải file cũ
-                try {
-                    const hotelsData = await HotelAPI.fetchHotelsByFilePaths([filePath]);
-                    if (ignore) break; // Dừng việc cập nhật state nếu effect đã bị hủy
-                    accumulatedHotels = [...accumulatedHotels, ...hotelsData];
-                    setHotels([...accumulatedHotels]);
-                } catch (error) {
-                    console.error(`Lỗi khi tải dữ liệu cho file ${filePath}:`, error);
-                }
-            }
-
-            if (ignore) return; // Bỏ qua toàn bộ phần xử lý phía sau (ẩn loading, chọn hotel...)
-
-            // Sau khi load xong, xử lý selectedHotel
-            const urlParams = new URLSearchParams(window.location.search);
-            const savedHotelId = urlParams.get('hotel') || localStorage.getItem('luquan_last_selected_hotel_id');
-
-            if (savedHotelId) {
-                const hotelToSelect = accumulatedHotels.find(h => h.id === savedHotelId);
-                const isPubliclyVisible = hotelToSelect && (hotelToSelect.status === 'approved' || hotelToSelect.status === 'reported');
-                if (hotelToSelect && isPubliclyVisible) {
-                    setSelectedHotel(hotelToSelect);
-                } else {
-                    setSelectedHotel(null);
-                    localStorage.removeItem('luquan_last_selected_hotel_id');
-                }
-            } else {
-                setSelectedHotel(null);
-            }
-
-            setIsLoading(false);
-        };
-
-        loadHotels();
-
-        // Hàm dọn dẹp (Cleanup function): Chạy khi component unmount hoặc dependencies thay đổi
-        return () => {
-            ignore = true; // Hủy bỏ tác dụng của lần tải này nếu người dùng ấn đổi khu vực liên tục
-        };
-    }, [filterLocationIds, provinces]);
-
-    // Lưu filterTypeIds vào Local Storage
-    useEffect(() => {
-        localStorage.setItem('luquan_last_selected_typeIds', JSON.stringify(filterTypeIds));
-    }, [filterTypeIds]);
-
-    useEffect(() => {
-        // Chạy lại sau mỗi lần render để đảm bảo mọi icon mới đều được hiển thị
-        // Điều này cũng khắc phục lỗi thư viện lucide CDN tải chậm hơn React
-        if (window.lucide) lucide.createIcons();
-    });
-
-    // Tự động cuộn danh sách đến khách sạn đang được chọn
-    useEffect(() => {
-        if (selectedHotel && viewMode === 'list') {
-            const element = document.getElementById(`hotel-item-${selectedHotel.id}`);
-            if (element) {
-                element.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            }
-        }
-
-        // Tự động cuộn khung chi tiết lên đầu khi chọn khách sạn mới
-        const detailContent = document.getElementById('hotel-detail-content');
-        if (detailContent) {
-            detailContent.scrollTop = 0;
-        }
-    }, [selectedHotel, viewMode]);
-
-    // Đồng bộ trạng thái URL cho các bộ lọc và khách sạn được chọn
-    const isInitialMountUrl = useRef(true);
-    useEffect(() => {
-        // Bỏ qua lần render đầu tiên để tránh việc vô tình xóa mất dữ liệu đã lưu
-        if (isInitialMountUrl.current) {
-            isInitialMountUrl.current = false;
-            return;
-        }
-        
-        const url = new URL(window.location);
-        
-        // 1. Đồng bộ selectedHotel
-        if (selectedHotel) {
-            localStorage.setItem('luquan_last_selected_hotel_id', selectedHotel.id);
-            url.searchParams.set('hotel', selectedHotel.id);
-        } else {
-            // Nếu người dùng đóng cửa sổ chi tiết, ta cũng xóa thông tin đã lưu
-            localStorage.removeItem('luquan_last_selected_hotel_id');
-            url.searchParams.delete('hotel');
-        }
-
-        // 2. Đồng bộ filterLocationIds
-        if (filterLocationIds.length > 0) {
-            url.searchParams.set('locationIds', filterLocationIds.join(','));
-        } else {
-            url.searchParams.delete('locationIds');
-        }
-        url.searchParams.delete('locationId'); // Dọn dẹp param cũ
-
-        // 3. Đồng bộ filterTypeIds
-        if (filterTypeIds.length > 0 && !filterTypeIds.includes('all')) {
-            url.searchParams.set('typeIds', filterTypeIds.join(','));
-        } else {
-            url.searchParams.delete('typeIds');
-        }
-
-        window.history.replaceState({}, '', url);
-    }, [selectedHotel, filterLocationIds, filterTypeIds]);
-
-    const filteredHotels = useMemo(() => {
-        let list;
-        if (isAdmin) {
-            if (adminTab === 'pending') list = pendingRequests;
-            else if (adminTab === 'pending_review') list = pendingReviewHotels;
-            else if (adminTab === 'inactive') list = (hotels || []).filter(h => h.status === 'inactive');
-            else if (adminTab === 'deleted') list = (hotels || []).filter(h => h.status === 'deleted');
-            else list = (hotels || []).filter(h => h.status !== 'inactive' && h.status !== 'deleted');
-        } else {
-            list = (hotels || []).filter(h => h.status === 'approved' || h.status === 'reported');
-        }
-
-        let searchResults = list;
-
-        if (filterTypeIds.length === 0) {
-            searchResults = [];
-        } else if (!filterTypeIds.includes('all')) {
-            // Ưu tiên lọc loại hình trước
-            searchResults = searchResults.filter(hotel => filterTypeIds.includes(hotel.type || 'other'));
-        }
-
-        const normalizedSearchTerm = removeVietnameseTones(searchTerm);
-        // Chỉ chạy logic biến đổi chuỗi phức tạp khi người dùng thực sự nhập từ khóa tìm kiếm
-        if (normalizedSearchTerm) {
-            searchResults = searchResults.filter(hotel => {
-                return removeVietnameseTones(hotel.name || "").includes(normalizedSearchTerm) ||
-                       removeVietnameseTones(decodeBase64(hotel.address) || "").includes(normalizedSearchTerm);
-            });
-        }
-
-        // Đưa khách sạn đang được chọn lên đầu danh sách
-        if (selectedHotel) {
-            const selectedIndex = searchResults.findIndex(h => h.id === selectedHotel.id);
-            if (selectedIndex > 0) { // Chỉ di chuyển nếu nó không phải là phần tử đầu tiên
-                const [selectedItem] = searchResults.splice(selectedIndex, 1);
-                searchResults.unshift(selectedItem);
-            }
-        }
-        return searchResults;
-    }, [hotels, pendingRequests, pendingReviewHotels, searchTerm, filterLocationIds, filterTypeIds, isAdmin, adminTab, selectedHotel]);
-
-    // Tự động ẩn Toast thông báo sau 3 giây
-    useEffect(() => {
-        if (toastMessage) {
-            const timer = setTimeout(() => setToastMessage(""), 3000);
-            return () => clearTimeout(timer);
-        }
-    }, [toastMessage]);
-
-    // Hàm xử lý khi NearByComponents lấy được định vị GPS của người dùng
-    const handleUserLocationUpdate = React.useCallback((loc) => {
-        if (!provinces || provinces.length === 0) return;
-        
-        let minDistance = Infinity;
-
-        // Tính khoảng cách từ GPS hiện tại đến tâm của TẤT CẢ các khu vực
-        const distances = provinces.map(schema => {
-            if (schema.lat == null || schema.lng == null) return { ...schema, dist: Infinity };
-            const dist = calculateDistance(loc.lat, loc.lng, schema.lat, schema.lng);
-            if (dist < minDistance) minDistance = dist;
-            return { ...schema, dist };
-        });
-
-        // Tìm tất cả khu vực lân cận trong bán kính 50km (để bao phủ vùng giáp ranh) 
-        // HOẶC lấy khu vực gần nhất nếu người dùng ở quá xa (tất cả đều > 50km).
-        const nearbySchemas = distances.filter(s => s.dist <= 50 || s.dist === minDistance);
-
-        if (nearbySchemas.length > 0) {
-            const nearbyIds = nearbySchemas.map(s => s.id);
-            const nearbyNames = nearbySchemas.map(s => s.locationName).join(', ');
-
-            setFilterLocationIds(prev => {
-                if (prev.includes('all')) return prev;
-                
-                // Nếu mảng bộ lọc đang có sẵn đã trùng khớp với các vùng giáp ranh này rồi thì bỏ qua
-                const isSame = prev.length === nearbyIds.length && prev.every(id => nearbyIds.includes(id));
-                if (isSame) return prev;
-                
-                setToastMessage(`Đang tải dữ liệu lân cận: ${nearbyNames}...`);
-                return nearbyIds; // Load GỘP tất cả các vùng lân cận
-            });
-        }
-    }, [provinces]);
-
-    const getReasonText = (reason) => {
-        const reasons = {
-            "wrong_phone": "Số điện thoại sai",
-            "wrong_hotel_name": "Tên lữ quán sai",
-            "wrong_map_location": "Vị trí trên bản đồ sai",
-            "wrong_address": "Địa chỉ không đúng",
-            "website_broken": "Website không hoạt động",
-            "hotel_closed": "Lữ quán đã đóng cửa",
-            "spam_or_fake": "Thông tin giả mạo/Spam",
-            "other": "Lý do khác"
-        };
-        return reasons[reason] || reason;
-    };
-
-    const handleAdminLogin = (e) => {
-        e.preventDefault();
-        if (adminPass === "1234") {
-            setIsAdmin(true);
-            setShowAdminLogin(false);
-            setAdminPass("");
-            setAdminError("");
-        } else {
-            setAdminError("Mật mã không đúng!");
-        }
-    };
-
-    const approveRequest = (hotel) => {
-        HotelAPI.approveHotelRequest(hotel.id)
-            .then(response => {
-                setPendingRequests(prev => prev.filter(h => h.id !== hotel.id));
-                // Nếu admin đang xem thành phố vừa được duyệt, thêm khách sạn vào danh sách để cập nhật UI
-            if (filterLocationIds.includes("all") || filterLocationIds.includes(response.data.locationId)) {
-                    setHotels(prev => [...prev, response.data]);
-                }
-                setToastMessage(`Đã duyệt thành công "${hotel.name}"!`);
-            })
-            .catch(err => {
-                console.error("Lỗi khi duyệt:", err);
-                setToastMessage(err.message || "Có lỗi xảy ra khi duyệt.");
-            });
-    };
-
-    const rejectRequest = (id, name) => {
-        HotelAPI.rejectHotelRequest(id)
-            .then(() => {
-                setPendingRequests(prev => prev.filter(h => h.id !== id));
-                setToastMessage(`Đã từ chối yêu cầu cho "${name}".`);
-            })
-            .catch(err => {
-                console.error("Lỗi khi từ chối:", err);
-                setToastMessage(err.message || "Có lỗi xảy ra khi từ chối.");
-            });
-    };
-
-    const handleReviewApprove = (hotel) => {
-        HotelAPI.setHotelStatus(hotel.id, 'approved')
-            .then((response) => {
-                setPendingReviewHotels(prev => prev.filter(h => h.id !== hotel.id));
-                // Thêm khách sạn lại vào danh sách đã duyệt nếu đang xem khu vực đó
-            if (filterLocationIds.includes("all") || filterLocationIds.includes(response.data.locationId)) {
-                    setHotels(prev => {
-                        if (prev.some(h => h.id === response.data.id)) {
-                            return prev.map(h => h.id === response.data.id ? response.data : h);
-                        }
-                        return [...prev, response.data];
-                    });
-                }
-                refreshReports(); // Tự động làm mới danh sách báo cáo
-                setToastMessage(`Đã duyệt lại "${hotel.name}" và dọn dẹp các báo cáo cũ.`);
-            })
-            .catch(err => {
-                setToastMessage(err.message || "Có lỗi xảy ra khi duyệt lại.");
-            });
-    };
-
-    const handleReviewReject = (hotel) => {
-        HotelAPI.setHotelStatus(hotel.id, 'inactive')
-            .then((response) => {
-                setPendingReviewHotels(prev => prev.filter(h => h.id !== hotel.id));
-            if (response.data && (filterLocationIds.includes("all") || filterLocationIds.includes(response.data.locationId))) {
-                    setHotels(prev => prev.map(h => h.id === response.data.id ? response.data : h));
-                }
-                setToastMessage(`Đã tạm ẩn "${hotel.name}".`);
-            })
-            .catch(err => {
-                setToastMessage(err.message || "Có lỗi xảy ra khi tạm ẩn.");
-            });
-    };
-
-    const handleRestoreHotel = (hotel) => {
-        HotelAPI.setHotelStatus(hotel.id, 'approved')
-            .then((response) => {
-                setHotels(prev => prev.map(h => h.id === response.data.id ? response.data : h));
-                setToastMessage(`Đã khôi phục hiển thị cho "${hotel.name}".`);
-            })
-            .catch(err => {
-                setToastMessage(err.message || "Có lỗi xảy ra khi khôi phục.");
-            });
-    };
-
-    const permanentlyDeleteHotel = (id, e) => {
-        e.stopPropagation();
-        if (!window.confirm("HÀNH ĐỘNG NÀY KHÔNG THỂ HOÀN TÁC! Bạn có chắc chắn muốn XÓA VĨNH VIỄN khách sạn này?")) {
-            return;
-        }
-        
-        HotelAPI.deleteHotel(id) // This calls the original DELETE endpoint
-            .then(() => {
-                setHotels(prev => prev.filter(h => h.id !== id));
-                setToastMessage("Đã xóa vĩnh viễn khách sạn!");
-            })
-            .catch(err => {
-                console.error("Lỗi khi xóa vĩnh viễn:", err);
-                setToastMessage(err.message || "Có lỗi xảy ra khi xóa vĩnh viễn.");
-            });
-    };
-
-    const onProcessReport = (hotelId) => {
-        // Tìm khách sạn từ tất cả các danh sách có thể có để lấy thông tin đầy đủ nhất
-        const hotelToEdit = hotels.find(h => h.id === hotelId) || 
-                            pendingRequests.find(h => h.id === hotelId) ||
-                            pendingReviewHotels.find(h => h.id === hotelId);
-        
-        if (hotelToEdit) {
-            setEditingHotel(hotelToEdit);
-        } else {
-            setToastMessage("Không tìm thấy thông tin chi tiết của lữ quán này.");
-        }
-    };
-
-    const startEditHotel = (hotel, e) => {
-        e.stopPropagation();
-        setEditingHotel(hotel);
-    };
-
-    const handleEditSuccess = (updatedHotel) => {
-        if (updatedHotel.status === 'pending') {
-            setPendingRequests(prev => prev.map(h => h.id === updatedHotel.id ? updatedHotel : h));
-        } else {
-            setHotels(prev => prev.map(h => h.id === updatedHotel.id ? updatedHotel : h));
-            if (updatedHotel.status === 'pending_review' || updatedHotel.status === 'reported') {
-                setPendingReviewHotels(prev => {
-                    if (prev.some(h => h.id === updatedHotel.id)) {
-                        return prev.map(h => h.id === updatedHotel.id ? updatedHotel : h);
-                    }
-                    return [updatedHotel, ...prev];
-                });
-            } else {
-                setPendingReviewHotels(prev => prev.filter(h => h.id !== updatedHotel.id));
-            }
-        }
-
-        if (selectedHotel?.id === updatedHotel.id) {
-            setSelectedHotel(updatedHotel);
-        }
-
-        // Tải lại danh sách báo cáo và cần review để cập nhật giao diện
-        refreshReports();
-    };
-
-    const hideHotel = (hotel, e) => {
-        e.stopPropagation();
-        if (!window.confirm(`Bạn có chắc chắn muốn tạm ẩn khách sạn "${hotel.name}" khỏi bản đồ?`)) {
-            return;
-        }
-        
-        HotelAPI.setHotelStatus(hotel.id, 'inactive')
-            .then((response) => {
-                setHotels(prev => prev.map(h => h.id === hotel.id ? (response.data || { ...h, status: 'inactive' }) : h));
-                if (selectedHotel?.id === hotel.id) setSelectedHotel(null);
-                setToastMessage(`Đã tạm ẩn "${hotel.name}".`);
-            })
-            .catch(err => {
-                console.error("Lỗi khi tạm ẩn:", err);
-                setToastMessage(err.message || "Có lỗi xảy ra khi cập nhật trạng thái ẩn.");
-            });
-    };
-
-    const deleteHotel = (id, e) => {
-        e.stopPropagation();
-        if (!window.confirm("Bạn có chắc chắn muốn đưa khách sạn này vào thùng rác? Lữ quán sẽ chuyển sang trạng thái 'deleted' và tự động xóa vĩnh viễn sau 6 tháng.")) {
-            return;
-        }
-        
-        HotelAPI.setHotelStatus(id, 'deleted')
-            .then((response) => {
-                setHotels(prev => prev.map(h => h.id === id ? (response.data || { ...h, status: 'deleted' }) : h));
-                setPendingReviewHotels(prev => prev.filter(h => h.id !== id));
-                if (selectedHotel?.id === id) setSelectedHotel(null);
-                setToastMessage("Đã đưa khách sạn vào danh sách chờ xóa!");
-            })
-            .catch(err => {
-                console.error("Lỗi khi đưa vào thùng rác:", err);
-                setToastMessage(err.message || "Có lỗi xảy ra khi cập nhật trạng thái xóa.");
-            });
-    };
-
-    const refreshReports = () => {
-        if (isAdmin) {
-            HotelAPI.fetchReports()
-                .then(data => setReports(data))
-                .catch(err => console.error("Lỗi tải lại báo cáo:", err));
-        }
-    };
-
-    const formatDate = (dateStr) => {
-        if (!dateStr) return "Chưa rõ";
-        const [year, month, day] = dateStr.split('-');
-        return `${day}/${month}/${year}`;
-    };
-
-    const handleCloseHotelDetail = useCallback(() => {
-        setSelectedHotel(null);
-    }, []);
-
-    const handleShare = async (hotel) => {
-        if (navigator.share) {
-            try {
-                await navigator.share({
-                    title: `Khách sạn: ${hotel.name}`,
-                    url: window.location.href,
-                });
-            } catch (err) {
-                console.error('Lỗi khi chia sẻ:', err);
-            }
-        } else {
-            navigator.clipboard.writeText(window.location.href);
-            setToastMessage("Đã sao chép đường dẫn vị trí khách sạn và bạn có thể chia sẻ!");
-        }
-    };
+    const { t } = useTranslation();
+    const {
+        hotels,
+        provinces,
+        isLoading,
+        pendingRequests,
+        setPendingRequests,
+        searchTerm,
+        setSearchTerm,
+        filterLocationIds,
+        setFilterLocationIds,
+        filterTypeIds,
+        setFilterTypeIds,
+        selectedHotel,
+        setSelectedHotel,
+        showRequestForm,
+        setShowRequestForm,
+        showSchemaManager,
+        setShowSchemaManager,
+        showAboutDialog,
+        setShowAboutDialog,
+        viewMode,
+        setViewMode,
+        isAdmin,
+        setIsAdmin,
+        showAdminLogin,
+        setShowAdminLogin,
+        adminPass,
+        setAdminPass,
+        adminError,
+        setAdminError,
+        adminTab,
+        setAdminTab,
+        pendingReviewHotels,
+        reports,
+        editingHotel,
+        setEditingHotel,
+        toastMessage,
+        setToastMessage,
+        reviewConfirm,
+        setReviewConfirm,
+        getLocationNameById,
+        handleUserLocationUpdate,
+        handleAdminLogin,
+        approveRequest,
+        rejectRequest,
+        handleReviewApprove,
+        handleReviewReject,
+        handleRestoreHotel,
+        permanentlyDeleteHotel,
+        onProcessReport,
+        startEditHotel,
+        handleEditSuccess,
+        hideHotel,
+        deleteHotel,
+        refreshReports,
+        formatDate,
+        handleCloseHotelDetail,
+        filteredHotels,
+        handleShare
+    } = useHotelConnectApp(t);
 
     return (
         <div className="absolute inset-0 flex flex-col bg-stone-50 text-stone-900 overflow-hidden font-sans select-none">
@@ -952,7 +173,7 @@ const MainApp = () => {
 
                     <div className="flex-1 overflow-y-auto bg-stone-50 scrollbar-hide pb-24">
                         {isAdmin && adminTab === 'reports' ? (
-                    <ReportManager reports={reports} setFilterCity={(id) => setFilterLocationIds([id])} onToast={setToastMessage} onReportDeleted={refreshReports} onProcessReport={onProcessReport} />
+                            <ReportManager reports={reports} setFilterCity={(id) => setFilterLocationIds([id])} onToast={setToastMessage} onReportDeleted={refreshReports} onProcessReport={onProcessReport} />
                         ) : (
                             <div className="p-3 space-y-3">
                                 {isLoading ? (
@@ -960,12 +181,12 @@ const MainApp = () => {
                                         <Icon name="loader" size={32} className="mx-auto mb-2 text-stone-400 animate-spin" />
                                         <p className="font-black uppercase text-[9px] tracking-widest italic">Đang tải dữ liệu...</p>
                                     </div>
-                            ) : filterLocationIds.length === 0 ? (
+                                ) : filterLocationIds.length === 0 ? (
                                     <div className="text-center py-20 opacity-40">
                                         <Icon name="map" size={32} className="mx-auto mb-2 text-stone-400" />
                                         <p className="font-black uppercase text-[9px] tracking-widest italic">Vui lòng chọn một khu vực để xem khách sạn</p>
                                     </div>
-                            ) : filterTypeIds.length === 0 ? (
+                                ) : filterTypeIds.length === 0 ? (
                                     <div className="text-center py-20 opacity-40">
                                         <Icon name="layers" size={32} className="mx-auto mb-2 text-stone-400" />
                                         <p className="font-black uppercase text-[9px] tracking-widest italic">Vui lòng chọn loại hình cần xem</p>
@@ -986,15 +207,15 @@ const MainApp = () => {
                                             <img src={hotel.image} onError={handleImageError} className="w-16 h-16 rounded-xl object-cover shrink-0 border border-stone-100 shadow-sm" />
                                             <div className="flex-1 min-w-0 flex flex-col justify-between py-0.5">
                                                 <div>
-                                                {hotel.type && (
-                                                    <span className="inline-flex items-center gap-1 w-max px-1.5 py-0.5 bg-stone-100 text-stone-600 text-[8px] font-black uppercase tracking-widest rounded border border-stone-200 mb-1">
-                                                        <Icon name={getIconForHotelType(hotel.type)} size={10} />
-                                                        {getTypeLabel(hotel.type)}
-                                                    </span>
-                                                )}
+                                                    {hotel.type && (
+                                                        <span className="inline-flex items-center gap-1 w-max px-1.5 py-0.5 bg-stone-100 text-stone-600 text-[8px] font-black uppercase tracking-widest rounded border border-stone-200 mb-1">
+                                                            <Icon name={getIconForHotelType(hotel.type)} size={10} />
+                                                            {getTypeLabel(hotel.type)}
+                                                        </span>
+                                                    )}
                                                     <h3 className="font-black text-stone-900 leading-tight truncate text-xs uppercase">{hotel.name}</h3>
                                                     <p className="text-[9px] text-stone-500 flex items-center gap-1 mt-0.5 font-bold truncate">
-                                                    <Icon name="map-pin" size={10} className="text-orange-700" /> {decodeBase64(hotel.address)} • {getLocationNameById(hotel.locationId)}
+                                                        <Icon name="map-pin" size={10} className="text-orange-700" /> {decodeBase64(hotel.address)} • {getLocationNameById(hotel.locationId)}
                                                     </p>
                                                 </div>
                                                 <div className="flex items-center justify-between mt-1">
@@ -1058,7 +279,7 @@ const MainApp = () => {
                     ${viewMode === 'map' ? 'translate-x-0' : 'translate-x-full md:translate-x-0'}
                 `}>
                     <div className="w-full h-full relative z-0">
-                    <MainLeafletMap hotels={filteredHotels} selectedHotel={selectedHotel} onSelectHotel={setSelectedHotel} filterCity={filterLocationIds.includes("all") || filterLocationIds.length === 0 ? null : filterLocationIds} viewMode={viewMode} />
+                        <MainLeafletMap hotels={filteredHotels} selectedHotel={selectedHotel} onSelectHotel={setSelectedHotel} filterCity={filterLocationIds.includes("all") || filterLocationIds.length === 0 ? null : filterLocationIds} viewMode={viewMode} />
                     </div>
                 </div>
 
@@ -1077,7 +298,7 @@ const MainApp = () => {
                     />
                 </div>
 
-                {/* View Switcher: Mobile Only - Đưa ra ngoài Map để không bao giờ bị che khuất */}
+                {/* View Switcher: Mobile Only */}
                 <div className="md:hidden absolute bottom-0 left-0 right-0 z-40 flex bg-white border-t border-stone-200 shadow-[0_-4px_20px_rgba(0,0,0,0.05)] pb-safe">
                     <button 
                         onClick={() => setViewMode('list')}
@@ -1116,7 +337,7 @@ const MainApp = () => {
                         onShare={handleShare}
                         formatDate={formatDate}
                         handleImageError={handleImageError}
-                        onToast={setToastMessage} // setToastMessage is stable (React guarantees useState setters are stable)
+                        onToast={setToastMessage}
                     />
                 )}
 
@@ -1157,6 +378,7 @@ const MainApp = () => {
                         </div>
                     </div>
                 )}
+
                 {/* Admin Login Modal */}
                 {showAdminLogin && (
                     <div className="fixed inset-0 bg-stone-950/90 backdrop-blur-xl z-[200] flex items-center justify-center p-6">
@@ -1284,7 +506,7 @@ const MainApp = () => {
                                     <p className="font-bold mt-2">Trân trọng,<br/>Lữ Quán – Nền tảng dữ liệu du lịch mở</p>
                                 </div>
                             </div>
-                            <button onClick={() => setShowAboutDialog(false)} className="w-full py-4 bg-stone-900 text-white rounded-2xl font-black shadow-xl active:scale-95 transition-all uppercase text-[11px] tracking-widest hover:bg-stone-800">
+                            <button onClick={() => setShowAboutDialog(false)} className="w-full py-4 bg-stone-900 text-white rounded-2xl font-black shadow-xl active:scale-95 transition-all uppercase text-[11px] tracking-widest hover:bg-stone-800 mt-6">
                                 Đã hiểu
                             </button>
                         </div>

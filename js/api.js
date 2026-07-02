@@ -13,7 +13,7 @@ const HotelAPI = {
             if (res.ok) {
                 HotelAPI.bannedWords = await res.json();
             } else {
-                HotelAPI.bannedWords = [];
+                HotelAPI.bannedWords = ["sex", "tinhduc"];
             }
         } catch (e) {
             console.error("Lỗi khi tải danh sách từ cấm:", e);

@@ -7,6 +7,7 @@ export const HOTEL_TYPES = [
     { id: 'villa', label: 'Biệt thự' },
     { id: 'motel', label: 'Nhà nghỉ' },
     { id: 'shop', label: 'Cửa hàng' },
+    { id: 'coffee', label: 'Quán cà phê' },
     { id: 'transport', label: 'Phương tiện di chuyển' },
     { id: 'local_food', label: 'Quán ăn địa phương' },
     { id: 'car', label: 'Taxi' },
@@ -28,6 +29,7 @@ export const getIconForHotelType = (type) => {
         case 'villa': return 'home';
         case 'homestay': return 'heart';
         case 'shop': return 'store';
+        case 'coffee': return 'coffee';
         case 'car': return 'car';
         case 'medical': return 'cross';
         case 'religion': return 'landmark';
@@ -54,4 +56,9 @@ export const REPORT_REASONS = {
 
 export const getReasonText = (reason) => {
     return REPORT_REASONS[reason] || reason;
+};
+
+export const getTypeLabel = (type) => {
+    const found = HOTEL_TYPES.find(t => t.id === type);
+    return found ? found.label : type;
 };

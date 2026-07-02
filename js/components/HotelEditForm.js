@@ -1,7 +1,7 @@
 import React from 'react';
 import Icon from './Icon';
 import { LocationPickerMap } from './MapComponents';
-import { HOTEL_TYPES } from '../constants';
+import { HOTEL_TYPES, OPTIONAL_PHONE_TYPES } from '../constants';
 import { useHotelEditForm } from '../hooks/useHotelEditForm';
 
 const HotelEditForm = ({ hotel, provinces, onClose, onSaveSuccess, onToast }) => {

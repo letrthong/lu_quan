@@ -71,3 +71,12 @@ export const calculateDistance = (lat1, lng1, lat2, lng2) => {
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
     return R * c;
 };
+
+export const removeVietnameseTones = (str) => {
+    if (!str) return "";
+    return str.normalize('NFD')
+              .replace(/[\u0300-\u036f]/g, '')
+              .replace(/đ/g, 'd').replace(/Đ/g, 'D')
+              .toLowerCase()
+              .replace(/\s+/g, ' ').trim();
+};

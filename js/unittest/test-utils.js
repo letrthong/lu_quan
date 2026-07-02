@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert';
-import { decodeBase64, encodeBase64, isValidPhoneNumber, calculateDistance } from '../utils.js';
+import { decodeBase64, encodeBase64, isValidPhoneNumber, calculateDistance, removeVietnameseTones } from '../utils.js';
 
 test('utils - encodeBase64 and decodeBase64', (t) => {
     const raw = "Lữ Quán Việt Nam!";
@@ -41,4 +41,11 @@ test('utils - calculateDistance', (t) => {
     // Null/undefined inputs should return Infinity
     assert.strictEqual(calculateDistance(null, lng, lat, lng), Infinity);
     assert.strictEqual(calculateDistance(lat, null, lat, lng), Infinity);
+});
+
+test('utils - removeVietnameseTones', (t) => {
+    assert.strictEqual(removeVietnameseTones("Lữ Quán"), "lu quan");
+    assert.strictEqual(removeVietnameseTones("Đà Nẵng"), "da nang");
+    assert.strictEqual(removeVietnameseTones("   Tiếng    Việt   "), "tieng viet");
+    assert.strictEqual(removeVietnameseTones(""), "");
 });
