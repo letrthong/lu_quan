@@ -1,4 +1,8 @@
-const { useState, useCallback, useMemo } = React; 
+import React, { useState, useCallback, useMemo } from 'react'; 
+import Icon from './Icon';
+import ReportForm from './ReportForm';
+import { HOTEL_TYPES, getIconForHotelType } from '../constants';
+import { decodeBase64 } from '../utils';
 
 const getTypeLabel = (type) => {
     const found = HOTEL_TYPES.find(t => t.id === type);
@@ -38,7 +42,6 @@ const HotelDetail = ({ hotel, onClose, onShare, formatDate, handleImageError, on
         setShowReportForm(false);
     }, []);
 
-    // Sử dụng hàm tiện ích decodeBase64 từ phạm vi toàn cục
     const decodedDescription = useMemo(() => decodeBase64(hotel.description), [hotel.description]);
     const decodedPhone = useMemo(() => decodeBase64(hotel.phone), [hotel.phone]);
     const decodedAddress = useMemo(() => decodeBase64(hotel.address), [hotel.address]);
@@ -124,7 +127,7 @@ const HotelDetail = ({ hotel, onClose, onShare, formatDate, handleImageError, on
                             </button>
                         )}
                         <button 
-                            onClick={() => setShowReportForm(true)} // Đây là hàm setter của useState, React đảm bảo nó ổn định
+                            onClick={() => setShowReportForm(true)}
                             className="w-full flex items-center justify-center gap-2 bg-red-50 text-red-700 py-3 rounded-2xl font-black active:scale-95 transition-all uppercase text-[10px] tracking-widest hover:bg-red-100 hover:text-red-900 border border-red-200"
                         >
                             <Icon name="flag" size={16} /> Báo sai thông tin
@@ -141,10 +144,12 @@ const HotelDetail = ({ hotel, onClose, onShare, formatDate, handleImageError, on
                 <ReportForm 
                     hotelId={hotel.id}
                     hotelName={hotel.name}
-                    onClose={handleCloseReportForm} // Sử dụng hàm đã memoize
+                    onClose={handleCloseReportForm}
                     onToast={onToast}
                 />
             )}
         </div>
     );
 };
+
+export default HotelDetail;

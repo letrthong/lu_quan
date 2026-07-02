@@ -1,18 +1,9 @@
 /**
  * HotelAPI - Module chịu trách nhiệm giao tiếp với Backend
- * (Hiện tại lấy file JSON tĩnh, có thể đổi URL thành API thật sau này)
  */
 const HotelAPI = {
-    baseUrl: null,
+    baseUrl: "",
     bannedWords: null,
-
-    init: async () => {
-        const res = await fetch('/luquan/js/config.json');
-        const config = await res.json();
-        const host = window.location.hostname;
-        const isLocal = host === 'localhost' || host === '127.0.0.1' || host.startsWith('192.168.');
-        HotelAPI.baseUrl = isLocal ? config.local_api_base : config.production_api_base;
-    },
 
     // Lấy danh sách từ khóa cấm từ file cấu hình tĩnh
     getBannedWords: async () => {
@@ -34,7 +25,6 @@ const HotelAPI = {
     // Lấy danh sách khách sạn
     // Hàm này giờ sẽ nhận một mảng các đường dẫn file để tải
     fetchHotelsByFilePaths: async (filePaths = []) => {
-        if (!HotelAPI.baseUrl) await HotelAPI.init();
         if (!filePaths || filePaths.length === 0) {
             return [];
         }
@@ -64,7 +54,6 @@ const HotelAPI = {
     
     // Gửi yêu cầu đăng ký khách sạn mới
     submitHotelRequest: async (newRequestData) => {
-        if (!HotelAPI.baseUrl) await HotelAPI.init();
         const response = await fetch(`${HotelAPI.baseUrl}/api/hotelconnect/v1/hotels/request`, { 
             method: 'POST', 
             headers: { 'Content-Type': 'application/json' },
@@ -79,7 +68,6 @@ const HotelAPI = {
 
     // Lấy danh sách yêu cầu đăng ký khách sạn (Pending Requests)
     fetchPendingRequests: async () => {
-        if (!HotelAPI.baseUrl) await HotelAPI.init();
         const response = await fetch(`${HotelAPI.baseUrl}/api/hotelconnect/v1/hotels/request`);
         if (!response.ok) {
             throw new Error("Lỗi khi tải danh sách yêu cầu chờ duyệt");
@@ -89,7 +77,6 @@ const HotelAPI = {
 
     // Phê duyệt một yêu cầu khách sạn
     approveHotelRequest: async (requestId) => {
-        if (!HotelAPI.baseUrl) await HotelAPI.init();
         const response = await fetch(`${HotelAPI.baseUrl}/api/hotelconnect/v1/requests/${requestId}/approve`, {
             method: 'POST'
         });
@@ -102,7 +89,6 @@ const HotelAPI = {
 
     // Từ chối một yêu cầu khách sạn
     rejectHotelRequest: async (requestId) => {
-        if (!HotelAPI.baseUrl) await HotelAPI.init();
         const response = await fetch(`${HotelAPI.baseUrl}/api/hotelconnect/v1/requests/${requestId}/reject`, {
             method: 'POST'
         });
@@ -115,7 +101,6 @@ const HotelAPI = {
 
     // Cập nhật một yêu cầu khách sạn đang chờ duyệt
     updateHotelRequest: async (requestId, requestData) => {
-        if (!HotelAPI.baseUrl) await HotelAPI.init();
         const response = await fetch(`${HotelAPI.baseUrl}/api/hotelconnect/v1/requests/${requestId}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
@@ -130,7 +115,6 @@ const HotelAPI = {
 
     // Gửi báo cáo lỗi cho một khách sạn
     submitReport: async (reportData) => {
-        if (!HotelAPI.baseUrl) await HotelAPI.init();
         const response = await fetch(`${HotelAPI.baseUrl}/api/hotelconnect/v1/hotels/reports`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -145,7 +129,6 @@ const HotelAPI = {
 
     // Lấy danh sách báo cáo lỗi
     fetchReports: async () => {
-        if (!HotelAPI.baseUrl) await HotelAPI.init();
         const response = await fetch(`${HotelAPI.baseUrl}/api/hotelconnect/v1/hotels/reports`);
         if (!response.ok) {
             throw new Error("Lỗi khi tải danh sách báo cáo");
@@ -155,7 +138,6 @@ const HotelAPI = {
 
     // Lấy tất cả báo cáo lỗi cho một khách sạn cụ thể
     fetchReportsForHotel: async (hotelId) => {
-        if (!HotelAPI.baseUrl) await HotelAPI.init();
         const response = await fetch(`${HotelAPI.baseUrl}/api/hotelconnect/v1/hotels/${hotelId}/reports`);
         if (!response.ok) {
             throw new Error(`Lỗi khi tải chi tiết báo cáo cho khách sạn ${hotelId}`);
@@ -165,7 +147,6 @@ const HotelAPI = {
 
     // Xóa một báo cáo lỗi
     deleteReport: async (reportId) => {
-        if (!HotelAPI.baseUrl) await HotelAPI.init();
         const response = await fetch(`${HotelAPI.baseUrl}/api/hotelconnect/v1/hotels/reports/${reportId}`, {
             method: 'DELETE'
         });
@@ -178,7 +159,6 @@ const HotelAPI = {
 
     // Lấy danh sách khách sạn theo trạng thái
     fetchHotelsByStatus: async (status) => {
-        if (!HotelAPI.baseUrl) await HotelAPI.init();
         const response = await fetch(`${HotelAPI.baseUrl}/api/hotelconnect/v1/hotels/status/${status}`);
         if (!response.ok) {
             throw new Error(`Lỗi khi tải danh sách khách sạn với trạng thái ${status}`);
@@ -188,7 +168,6 @@ const HotelAPI = {
 
     // Cập nhật trạng thái của khách sạn
     setHotelStatus: async (hotelId, status) => {
-        if (!HotelAPI.baseUrl) await HotelAPI.init();
         const response = await fetch(`${HotelAPI.baseUrl}/api/hotelconnect/v1/hotels/${hotelId}/status`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -203,7 +182,6 @@ const HotelAPI = {
 
     // Cập nhật thông tin khách sạn đã duyệt
     updateHotel: async (hotelId, hotelData) => {
-        if (!HotelAPI.baseUrl) await HotelAPI.init();
         const response = await fetch(`${HotelAPI.baseUrl}/api/hotelconnect/v1/hotels/${hotelId}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
@@ -218,7 +196,6 @@ const HotelAPI = {
 
     // Xóa một khách sạn đã duyệt
     deleteHotel: async (hotelId) => {
-        if (!HotelAPI.baseUrl) await HotelAPI.init();
         const response = await fetch(`${HotelAPI.baseUrl}/api/hotelconnect/v1/hotels/${hotelId}`, {
             method: 'DELETE'
         });
@@ -231,13 +208,10 @@ const HotelAPI = {
 
     // Lấy danh sách schema (Tỉnh/Thành phố)
     getSchemas: async () => {
-        if (!HotelAPI.baseUrl) await HotelAPI.init();
         try {
-            // Chuyển sang gọi API từ backend
             const response = await fetch(`${HotelAPI.baseUrl}/api/hotelconnect/v1/schema`);
             if (!response.ok) throw new Error("Không thể tải dữ liệu cấu hình các tỉnh");
             const schemas = await response.json();
-            // Trả về toàn bộ object để component có thể lấy cả locationName và filePathId
             return schemas.sort((a, b) => a.locationName.localeCompare(b.locationName, 'vi'));
         } catch (error) {
             console.error("Lỗi khi lấy danh sách thành phố:", error);
@@ -247,7 +221,6 @@ const HotelAPI = {
 
     // Thêm một schema mới
     addSchema: async (schemaData) => {
-        if (!HotelAPI.baseUrl) await HotelAPI.init();
         const response = await fetch(`${HotelAPI.baseUrl}/api/hotelconnect/v1/schema`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -262,7 +235,6 @@ const HotelAPI = {
 
     // Cập nhật một schema
     updateSchema: async (id, schemaData) => {
-        if (!HotelAPI.baseUrl) await HotelAPI.init();
         const response = await fetch(`${HotelAPI.baseUrl}/api/hotelconnect/v1/schema/${id}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
@@ -277,7 +249,6 @@ const HotelAPI = {
 
     // Xóa một schema
     deleteSchema: async (id) => {
-        if (!HotelAPI.baseUrl) await HotelAPI.init();
         const response = await fetch(`${HotelAPI.baseUrl}/api/hotelconnect/v1/schema/${id}`, {
             method: 'DELETE'
         });
@@ -288,3 +259,5 @@ const HotelAPI = {
         return await response.json();
     }
 };
+
+export default HotelAPI;

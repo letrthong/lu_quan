@@ -1,3 +1,5 @@
+import React from 'react';
+
 const AdminTabs = ({
     adminTab,
     onSetAdminTab,
@@ -47,3 +49,5 @@ const AdminTabs = ({
         </div>
     );
 };
+
+export default AdminTabs;

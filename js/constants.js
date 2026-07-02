@@ -1,5 +1,4 @@
-
-const HOTEL_TYPES = [
+export const HOTEL_TYPES = [
     { id: 'hotel', label: 'Khách sạn' },
     { id: 'restaurant', label: 'Nhà hàng - Quán ăn' },
     { id: 'entertainment', label: 'Điểm tham quan' },
@@ -19,9 +18,9 @@ const HOTEL_TYPES = [
 ];
 
 // Danh sách các loại hình không bắt buộc nhập số điện thoại
-const OPTIONAL_PHONE_TYPES = ['entertainment', 'local_food', 'religion', 'gas_station', 'ev_station'];
+export const OPTIONAL_PHONE_TYPES = ['entertainment', 'local_food', 'religion', 'gas_station', 'ev_station'];
 
-const getIconForHotelType = (type) => {
+export const getIconForHotelType = (type) => {
     switch (type) {
         case 'restaurant': return 'utensils';
         case 'entertainment': return 'ticket';
@@ -42,10 +41,17 @@ const getIconForHotelType = (type) => {
     }
 };
 
-if (typeof module !== 'undefined' && module.exports) {
-    module.exports = {
-        HOTEL_TYPES,
-        OPTIONAL_PHONE_TYPES,
-        getIconForHotelType
-    };
-}
+export const REPORT_REASONS = {
+    "wrong_phone": "Số điện thoại sai",
+    "wrong_hotel_name": "Tên lữ quán sai",
+    "wrong_map_location": "Vị trí trên bản đồ sai",
+    "wrong_address": "Địa chỉ không đúng",
+    "website_broken": "Website không hoạt động",
+    "hotel_closed": "Lữ quán đã đóng cửa",
+    "spam_or_fake": "Thông tin giả mạo/Spam",
+    "other": "Lý do khác"
+};
+
+export const getReasonText = (reason) => {
+    return REPORT_REASONS[reason] || reason;
+};

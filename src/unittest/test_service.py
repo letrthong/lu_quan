@@ -1,3 +1,7 @@
+import sys
+import os
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
 import unittest
 import json
 from unittest.mock import patch
@@ -67,6 +71,46 @@ class HotelConnectServiceTestCase(unittest.TestCase):
         response = self.app.delete('/api/hotelconnect/v1/schema/1')
         self.assertEqual(response.status_code, 200)
         self.assertIn('message', response.json)
+
+    @patch('services.read_schema', return_value=[{
+        HotelField.ID: "1",
+        HotelField.FILE_PATH_ID: "a.json",
+        HotelField.LOCATION: "A",
+        HotelField.LAT: 10.0,
+        HotelField.LNG: 20.0,
+        HotelField.RADIUS: 10.0
+    }])
+    def test_update_schema_decrease_radius_error(self, mock_read_schema):
+        data = {
+            HotelField.FILE_PATH_ID: "a.json",
+            HotelField.LOCATION: "A",
+            HotelField.LAT: 10.0,
+            HotelField.LNG: 20.0,
+            HotelField.RADIUS: 5.0
+        }
+        response = self.app.put('/api/hotelconnect/v1/schema/1',
+                                data=json.dumps(data),
+                                content_type='application/json')
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("error", response.json)
+
+    @patch('services.read_schema', return_value=[])
+    def test_delete_schema_not_found(self, mock_read_schema):
+        response = self.app.delete('/api/hotelconnect/v1/schema/999')
+        self.assertEqual(response.status_code, 404)
+        self.assertIn("error", response.json)
+
+    @patch('services.read_schema', return_value=[])
+    def test_add_schema_invalid(self, mock_read_schema):
+        data = {
+            HotelField.LAT: 10.0,
+            HotelField.LNG: 20.0
+        }
+        response = self.app.post('/api/hotelconnect/v1/schema',
+                                 data=json.dumps(data),
+                                 content_type='application/json')
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("error", response.json)
 
 if __name__ == '__main__':
     unittest.main()

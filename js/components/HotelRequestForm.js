@@ -1,4 +1,9 @@
-const { useState, useEffect, useRef, useMemo } = React;
+import React, { useState, useEffect, useRef, useMemo } from 'react';
+import Icon from './Icon';
+import { LocationPickerMap } from './MapComponents';
+import { HOTEL_TYPES, OPTIONAL_PHONE_TYPES } from '../constants';
+import HotelAPI from '../api';
+import { encodeBase64, processImageUpload, isValidPhoneNumber, calculateDistance as haversine } from '../utils';
 
 const HotelRequestForm = ({ provinces, onClose, onSubmitSuccess, onToast }) => {
     // Quản lý vị trí bản đồ độc lập, không ảnh hưởng đến vị trí ở ngoài App chính
@@ -44,14 +49,12 @@ const HotelRequestForm = ({ provinces, onClose, onSubmitSuccess, onToast }) => {
             if (province) {
                 setLocationName(province.locationName);
                 setAreaRadius(province.radius ? parseFloat(province.radius) : 2);
-                // Nếu dữ liệu tỉnh đã có sẵn tọa độ (từ Schema)
                 if (province.lat !== undefined && province.lng !== undefined && province.lat !== "" && province.lng !== "") {
                     const lat = parseFloat(province.lat);
                     const lng = parseFloat(province.lng);
                     setPickerPos({ lat, lng });
                     setAreaCenter({ lat, lng });
                 } else {
-                    // Fallback: Tìm tọa độ tự động qua API nếu dữ liệu cũ chưa có lat/lng
                     try {
                         const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(province.locationName + ', Vietnam')}&limit=1`);
                         const data = await response.json();
@@ -109,7 +112,7 @@ const HotelRequestForm = ({ provinces, onClose, onSubmitSuccess, onToast }) => {
     const handleSubmit = async (e) => {
         e.preventDefault();
         setIsSubmitting(true);
-        setApiError(null); // Xóa lỗi cũ khi submit lại
+        setApiError(null);
 
         const formData = new FormData(e.target);
         const name = formData.get('name').trim();
@@ -120,15 +123,12 @@ const HotelRequestForm = ({ provinces, onClose, onSubmitSuccess, onToast }) => {
 
         const bannedWords = await HotelAPI.getBannedWords();
 
-        // --- START VALIDATION: Check location ---
         if (!locationId) {
             setApiError("Vui lòng chọn Tỉnh/Thành phố.");
             setIsSubmitting(false);
             return;
         }
-        // --- END VALIDATION ---
 
-        // --- START VALIDATION: Banned words in name and description ---
         const lowerName = name.toLowerCase();
         const lowerDescription = description.toLowerCase();
         if (bannedWords.some(word => lowerName.includes(word) || lowerDescription.includes(word))) {
@@ -136,33 +136,25 @@ const HotelRequestForm = ({ provinces, onClose, onSubmitSuccess, onToast }) => {
             setIsSubmitting(false);
             return;
         }
-        // --- END VALIDATION ---
 
-        // --- START VALIDATION: Description Min Length ---
         if (description.length < 3) {
             setApiError("Mô tả đặc điểm phải có ít nhất 3 ký tự.");
             setIsSubmitting(false);
             return;
         }
-        // --- END VALIDATION ---
 
-        // --- START VALIDATION: Kiểm tra số điện thoại hợp lệ của Việt Nam ---
         if ((!OPTIONAL_PHONE_TYPES.includes(type) || phone) && !isValidPhoneNumber(phone)) {
             setApiError("Số điện thoại không hợp lệ. Vui lòng kiểm tra lại (gồm 8-11 số).");
             setIsSubmitting(false);
             return;
         }
-        // --- END VALIDATION ---
 
-        // --- START VALIDATION: Kiểm tra định dạng Website ---
         let processedWebsite = website;
         if (processedWebsite) {
-            // Tự động thêm https:// nếu người dùng quên
             if (!processedWebsite.startsWith('http://') && !processedWebsite.startsWith('https://')) {
                 processedWebsite = 'https://' + processedWebsite;
             }
 
-            // Kiểm tra từ khóa cấm
             const lowerWebsite = processedWebsite.toLowerCase();
             if (bannedWords.some(word => lowerWebsite.includes(word))) {
                 setApiError("Website chứa từ khóa không cho phép.");
@@ -178,7 +170,6 @@ const HotelRequestForm = ({ provinces, onClose, onSubmitSuccess, onToast }) => {
                 return;
             }
         }
-        // --- END VALIDATION ---
 
         const today = new Date().toISOString().split('T')[0];
 
@@ -205,7 +196,6 @@ const HotelRequestForm = ({ provinces, onClose, onSubmitSuccess, onToast }) => {
             lng: pickerPos.lng  
         };
         
-        // Gọi API Service để gửi dữ liệu
         HotelAPI.submitHotelRequest(newRequest)
             .then((response) => {
                 onSubmitSuccess(response.data);
@@ -221,7 +211,6 @@ const HotelRequestForm = ({ provinces, onClose, onSubmitSuccess, onToast }) => {
             });
     };
 
-    // Kiểm tra khoảng cách để vô hiệu hóa nút Gửi yêu cầu
     let isOutside = false;
     if (areaCenter && pickerPos) {
         isOutside = haversine(pickerPos.lat, pickerPos.lng, areaCenter.lat, areaCenter.lng) > areaRadius;
@@ -379,7 +368,6 @@ const HotelRequestForm = ({ provinces, onClose, onSubmitSuccess, onToast }) => {
                                     onClick={async () => {
                                         if (!websiteUrl) { setApiError("Vui lòng nhập URL để kiểm tra."); return; }
                                         let urlToTest = websiteUrl;
-                                        // Tự động thêm https:// nếu người dùng quên
                                         if (!urlToTest.startsWith('http://') && !urlToTest.startsWith('https://')) {
                                             urlToTest = 'https://' + urlToTest;
                                         }
@@ -395,7 +383,7 @@ const HotelRequestForm = ({ provinces, onClose, onSubmitSuccess, onToast }) => {
                                             new URL(urlToTest);
                                             window.open(urlToTest, '_blank');
                                             setApiError(null);
-                                            setWebsiteUrl(urlToTest); // Cập nhật state để hiển thị URL đã được sửa
+                                            setWebsiteUrl(urlToTest);
                                         } catch (error) {
                                             setApiError("Website không hợp lệ. Vui lòng nhập URL bắt đầu bằng http:// hoặc https://");
                                         }
@@ -433,7 +421,6 @@ const HotelRequestForm = ({ provinces, onClose, onSubmitSuccess, onToast }) => {
                             </div>
                         </div>
                     </div>
-                    {/* Hiển thị lỗi từ API */}
                     {apiError && (
                         <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-3 rounded-lg text-xs" role="alert">
                             <p className="font-bold">Không thể gửi yêu cầu</p>
@@ -455,3 +442,5 @@ const HotelRequestForm = ({ provinces, onClose, onSubmitSuccess, onToast }) => {
         </div>
     );
 };
+
+export default HotelRequestForm;

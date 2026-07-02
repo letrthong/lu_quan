@@ -1,4 +1,6 @@
-const { useState } = React;
+import React, { useState } from 'react';
+import Icon from './Icon';
+import HotelAPI from '../api';
 
 const ReportForm = ({ hotelId, hotelName, onClose, onToast }) => {
     const [reason, setReason] = useState("");
@@ -77,3 +79,5 @@ const ReportForm = ({ hotelId, hotelName, onClose, onToast }) => {
         </div>
     );
 };
+
+export default ReportForm;

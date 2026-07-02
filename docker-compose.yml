@@ -10,5 +10,7 @@ services:
       - "5000:5000"
     volumes:
       - ./:/app/
+      - /app/dist/
+      - /app/node_modules/
     stdin_open: true
     tty: true

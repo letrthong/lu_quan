@@ -30,7 +30,7 @@ hotel_connect/
 │   └── components/
 │       ├── MapComponents.js # Các component bản đồ (Leaflet, marker, picker...)
 │       └── Icon.js          # Component icon SVG (Lucide, custom...)
-│   └── config.json          # File cấu hình endpoint backend (local/prod), dùng cho HotelAPI
+│   └── utils.js             # Hàm tiện ích chung (Base64, GPS, Haversine...)
 ├── config/
 │   ├── hotel_schema.json    # Tệp dự phòng cấu trúc dữ liệu khách sạn (chuẩn backend Flask)
 │   ├── hochiminh_hotels.json # Danh sách khách sạn Hồ Chí Minh (và các file *.json cho từng thành phố)
@@ -42,17 +42,9 @@ hotel_connect/
 
 ## 🚀 Hướng dẫn Cài đặt và Chạy dự án
 
-**Lưu ý khi chạy backend Flask bằng Docker trên Ubuntu:**
-- Địa chỉ backend (local_api_base trong js/config.json) phải là IP thực tế của máy Ubuntu (ví dụ: http://192.168.x.x:5000), không phải localhost, để frontend fetch đúng vào backend Flask trong container Docker.
-- Ví dụ cấu hình đúng:
-   ```json
-   {
-      "local_api_base": "http://192.168.124.129:5000",
-      "production_api_base": "https://telua.vn"
-   }
-   ```
-- Xác định IP Ubuntu bằng lệnh `ip a` hoặc `hostname -I`.
-- Nếu truy cập từ máy khác hoặc trình duyệt trên host, dùng đúng IP và port đã map khi chạy Docker.
+**Lưu ý khi chạy và phát triển cục bộ:**
+- Tất cả API của frontend hiện đã được cấu hình dạng **relative path** (`/api/...`).
+- Khi phát triển cục bộ bằng Vite (`npm run dev`), các request `/api` sẽ được tự động proxy tới Flask Backend (mặc định cổng `5000`) thông qua cấu hình proxy trong `vite.config.js`. Do đó, bạn không cần phải cấu hình cứng địa chỉ IP nữa.
 
 
 Ứng dụng sử dụng API `fetch()` của trình duyệt để đọc dữ liệu khách sạn từ các tệp JSON trong thư mục `config/` (ví dụ: `hochiminh_hotels.json`, `danang_hotels.json`, ...). Bạn **không thể** nhấp đúp để mở file `index.html` trực tiếp (giao thức `file://` sẽ bị lỗi CORS). Bạn cần chạy dự án thông qua một Local Web Server.

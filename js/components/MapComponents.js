@@ -1,6 +1,6 @@
-const { useEffect, useRef, useState } = React;
+import React, { useEffect, useRef, useState } from 'react';
 
-const createHotelIcon = (hotel, isSelected) => {
+export const createHotelIcon = (hotel, isSelected) => {
     let bgColor = 'bg-stone-500'; // Màu xám trung tính mặc định cho các loại "Khác"
     let svgPath = '<path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"></path><circle cx="12" cy="10" r="3"></circle>'; // Icon map-pin
 
@@ -55,7 +55,7 @@ const createHotelIcon = (hotel, isSelected) => {
         bgColor = 'bg-moss'; // Khi được click chọn, tất cả marker đều đổi màu thành xanh moss
     }
 
-    return L.divIcon({
+    return window.L.divIcon({
         className: "", // Để trống để xóa viền và nền trắng mặc định của Leaflet
         html: `<div class="relative w-full h-full flex justify-center">
             <div class="flex items-center justify-center w-8 h-8 rounded-full shadow-lg transition-all duration-300 ${
@@ -77,7 +77,7 @@ const createHotelIcon = (hotel, isSelected) => {
 };
 
 // Custom Component cho Bản đồ chính
-const MainLeafletMap = ({ hotels, selectedHotel, onSelectHotel, filterCity, viewMode }) => {
+export const MainLeafletMap = ({ hotels, selectedHotel, onSelectHotel, filterCity, viewMode }) => {
     const mapRef = useRef(null);
     const mapInstance = useRef(null);
     const clusterGroupRef = useRef(null);
@@ -106,11 +106,11 @@ const MainLeafletMap = ({ hotels, selectedHotel, onSelectHotel, filterCity, view
                 console.error("Lỗi đọc map state:", e);
             }
 
-            mapInstance.current = L.map(mapRef.current, { zoomControl: false }).setView(initialCenter, initialZoom);
-            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            mapInstance.current = window.L.map(mapRef.current, { zoomControl: false }).setView(initialCenter, initialZoom);
+            window.L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                 attribution: '&copy; OpenStreetMap'
             }).addTo(mapInstance.current);
-            L.control.zoom({ position: 'bottomright' }).addTo(mapInstance.current);
+            window.L.control.zoom({ position: 'bottomright' }).addTo(mapInstance.current);
             
             // Lưu lại vị trí mỗi khi người dùng di chuyển hoặc zoom bản đồ xong
             mapInstance.current.on('moveend', () => {
@@ -120,7 +120,7 @@ const MainLeafletMap = ({ hotels, selectedHotel, onSelectHotel, filterCity, view
             });
         }
 
-        // Kích hoạt kích thước map ngay sau khi DOM và Flexbox đã chia khung xong (An toàn hơn ResizeObserver)
+        // Kích hoạt kích thước map ngay sau khi DOM và Flexbox đã chia khung xong (An sau ResizeObserver)
         const initTimeout = setTimeout(() => {
             if (mapInstance.current) mapInstance.current.invalidateSize();
         }, 200);
@@ -139,36 +139,35 @@ const MainLeafletMap = ({ hotels, selectedHotel, onSelectHotel, filterCity, view
 
         // Khởi tạo hoặc dọn dẹp cluster group
         if (!clusterGroupRef.current) {
-            clusterGroupRef.current = L.markerClusterGroup({
-                maxClusterRadius: 50, // Giảm bán kính gom cụm (mặc định 80) để hiện nhiều vị trí riêng lẻ hơn
-                disableClusteringAtZoom: 15, // Mức zoom mà tại đó mọi cụm sẽ tự động bung ra thành các vị trí
+            clusterGroupRef.current = window.L.markerClusterGroup({
+                maxClusterRadius: 50,
+                disableClusteringAtZoom: 15,
                 iconCreateFunction: function(cluster) {
                     const count = cluster.getChildCount();
                     let size = ' w-10 h-10 text-base';
                     if (count >= 10) size = ' w-12 h-12 text-lg';
                     if (count >= 100) size = ' w-14 h-14 text-xl';
                     
-                    return L.divIcon({
+                    return window.L.divIcon({
                         html: `<div class="flex items-center justify-center rounded-full bg-moss text-white font-black border-4 border-white/50 shadow-lg ${size}">` + count + '</div>',
-                        className: '', // Quan trọng: Xóa style mặc định của Leaflet
-                        iconSize: null // Để Leaflet tự tính
+                        className: '',
+                        iconSize: null
                     });
                 }
             });
             map.addLayer(clusterGroupRef.current);
         }
-        clusterGroupRef.current.clearLayers(); // Dọn dẹp tất cả marker cũ một cách hiệu quả
+        clusterGroupRef.current.clearLayers();
         markersRef.current = {};
 
         // Thêm marker mới
         hotels.forEach(hotel => {
             const isSelected = selectedHotel?.id === hotel.id;
-            
             const customIcon = createHotelIcon(hotel, isSelected);
 
-            const marker = L.marker([hotel.lat, hotel.lng], { icon: customIcon });
+            const marker = window.L.marker([hotel.lat, hotel.lng], { icon: customIcon });
             marker.on('click', (e) => {
-                L.DomEvent.stopPropagation(e); // Ngăn sự kiện click lan ra bản đồ (tránh bị đóng popup ngay)
+                window.L.DomEvent.stopPropagation(e);
                 onSelectHotel(hotel);
             });
             clusterGroupRef.current.addLayer(marker);
@@ -178,7 +177,6 @@ const MainLeafletMap = ({ hotels, selectedHotel, onSelectHotel, filterCity, view
 
     // Tách riêng hiệu ứng cập nhật icon khi chọn hotel để tránh re-render toàn bộ layer
     useEffect(() => {
-        // 1. Khôi phục style cho marker đã chọn trước đó
         const prevHotel = previousSelectedHotelRef.current;
         if (prevHotel) {
             const prevMarker = markersRef.current[prevHotel.id];
@@ -188,7 +186,6 @@ const MainLeafletMap = ({ hotels, selectedHotel, onSelectHotel, filterCity, view
             }
         }
 
-        // 2. Áp dụng style mới cho marker vừa được chọn
         if (selectedHotel) {
             const newMarker = markersRef.current[selectedHotel.id];
             if (newMarker) {
@@ -197,7 +194,6 @@ const MainLeafletMap = ({ hotels, selectedHotel, onSelectHotel, filterCity, view
             }
         }
         
-        // 3. Lưu lại hotel vừa chọn cho lần chạy sau
         previousSelectedHotelRef.current = selectedHotel;
     }, [selectedHotel]);
 
@@ -205,36 +201,27 @@ const MainLeafletMap = ({ hotels, selectedHotel, onSelectHotel, filterCity, view
     useEffect(() => {
         if (!mapInstance.current) return;
 
-        // Cờ này ngăn việc reset view trong lần render đầu tiên, để tôn trọng trạng thái bản đồ đã lưu.
         const isFirstRun = isInitialMount.current;
-        isInitialMount.current = false; // Đặt thành false cho tất cả các lần chạy sau.
+        isInitialMount.current = false;
 
-        // Ưu tiên 1: Zoom vào một khách sạn cụ thể đã được chọn.
         if (selectedHotel) {
             const marker = markersRef.current[selectedHotel.id];
             if (marker) {
                 const zoomAndFly = () => {
-                    // Thêm một khoảng trễ nhỏ để cho phép animation của cluster kết thúc hoàn toàn
-                    // trước khi bắt đầu animation 'flyTo', tránh race condition có thể gây lỗi.
                     setTimeout(() => {
-                        if (mapInstance.current) { // Đảm bảo map vẫn tồn tại
+                        if (mapInstance.current) {
                             mapInstance.current.flyTo([selectedHotel.lat, selectedHotel.lng], 12, { duration: 0.4 });
                         }
                     }, 100);
                 };
-                // Đảm bảo cụm marker được mở ra trước khi zoom vào chi tiết
                 clusterGroupRef.current.zoomToShowLayer(marker, zoomAndFly);
             }
         } 
-        // Ưu tiên 2: Zoom để bao quát thành phố nếu không có khách sạn nào được chọn.
         else if (filterCity && hotels.length > 0) {
-            // Tính toán tọa độ bao quát tất cả các khách sạn trong thành phố đó
-            const bounds = L.latLngBounds(hotels.map(h => [h.lat, h.lng]));
+            const bounds = window.L.latLngBounds(hotels.map(h => [h.lat, h.lng]));
             mapInstance.current.flyToBounds(bounds, { padding: [50, 50], maxZoom: 13, duration: 1.5 });
         } 
-        // Ưu tiên 3: Zoom về toàn Việt Nam (VD: khi chọn "Tất cả khu vực").
         else if (!filterCity) {
-            // Nhưng không thực hiện việc này trong lần tải đầu tiên để giữ lại trạng thái bản đồ đã lưu.
             if (isFirstRun) {
                 return;
             }
@@ -242,7 +229,6 @@ const MainLeafletMap = ({ hotels, selectedHotel, onSelectHotel, filterCity, view
         }
     }, [filterCity, hotels, selectedHotel]);
 
-    // Tự động điều chỉnh lại kích thước bản đồ khi chuyển sang chế độ "Bản Đồ" trên mobile
     useEffect(() => {
         if (mapInstance.current) {
             const t1 = setTimeout(() => mapInstance.current.invalidateSize(), 100);
@@ -269,23 +255,23 @@ const haversine = (lat1, lng1, lat2, lng2) => {
 };
 
 // Custom Component cho Bản đồ chọn vị trí (Form)
-const LocationPickerMap = ({ position, onPositionChange, areaCenter, locationName, areaRadius = 2 }) => {
+export const LocationPickerMap = ({ position, onPositionChange, areaCenter, locationName, areaRadius = 2 }) => {
     const mapRef = useRef(null);
     const mapInstance = useRef(null);
     const markerInstance = useRef(null);
-    const centerMarkerRef = useRef(null); // To hold the area center marker
-    const circleRef = useRef(null); // To hold the 2km radius circle layer
+    const centerMarkerRef = useRef(null);
+    const circleRef = useRef(null);
     const [searchQuery, setSearchQuery] = useState("");
     const [isSearching, setIsSearching] = useState(false);
-    const [warning, setWarning] = useState(null); // To hold the distance warning message
+    const [warning, setWarning] = useState(null);
 
     useEffect(() => {
         if (!mapRef.current || mapInstance.current) return;
         
-        mapInstance.current = L.map(mapRef.current).setView([position.lat, position.lng], 12);
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(mapInstance.current);
+        mapInstance.current = window.L.map(mapRef.current).setView([position.lat, position.lng], 12);
+        window.L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(mapInstance.current);
         
-        const customIcon = L.divIcon({
+        const customIcon = window.L.divIcon({
             className: "", 
             html: `<div class="flex items-center justify-center w-10 h-10 rounded-full shadow-2xl bg-orange-700 text-white border-4 border-white animate-bounce cursor-grab active:cursor-grabbing">
                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"></path><circle cx="12" cy="10" r="3"></circle></svg>
@@ -294,7 +280,7 @@ const LocationPickerMap = ({ position, onPositionChange, areaCenter, locationNam
             iconAnchor: [20, 40]
         });
 
-        markerInstance.current = L.marker([position.lat, position.lng], { draggable: true, icon: customIcon }).addTo(mapInstance.current);
+        markerInstance.current = window.L.marker([position.lat, position.lng], { draggable: true, icon: customIcon }).addTo(mapInstance.current);
         
         markerInstance.current.on('dragend', function () {
             const latlng = markerInstance.current.getLatLng();
@@ -306,13 +292,11 @@ const LocationPickerMap = ({ position, onPositionChange, areaCenter, locationNam
             onPositionChange({ lat: e.latlng.lat, lng: e.latlng.lng });
         });
 
-        // Fix lỗi bản đồ bị xám 1 phần khi mở modal (chờ DOM hiển thị hoàn toàn)
         setTimeout(() => {
             if (mapInstance.current) mapInstance.current.invalidateSize();
         }, 250);
     }, []);
 
-    // Cập nhật marker và bản đồ khi prop position thay đổi (do nhập tay Vĩ độ/Kinh độ)
     useEffect(() => {
         if (mapInstance.current && markerInstance.current) {
             const newLat = parseFloat(position.lat);
@@ -320,7 +304,6 @@ const LocationPickerMap = ({ position, onPositionChange, areaCenter, locationNam
             
             if (!isNaN(newLat) && !isNaN(newLng)) {
                 const currentLatLng = markerInstance.current.getLatLng();
-                // Chỉ di chuyển nếu tọa độ có sự khác biệt (tránh giật lag xung đột khi đang kéo thả marker)
                 if (Math.abs(currentLatLng.lat - newLat) > 0.000001 || Math.abs(currentLatLng.lng - newLng) > 0.000001) {
                     markerInstance.current.setLatLng([newLat, newLng]);
                     mapInstance.current.flyTo([newLat, newLng], mapInstance.current.getZoom(), { animate: true, duration: 0.5 });
@@ -329,11 +312,9 @@ const LocationPickerMap = ({ position, onPositionChange, areaCenter, locationNam
         }
     }, [position.lat, position.lng]);
 
-    // Draw/update the 2km radius circle when areaCenter changes
     useEffect(() => {
         if (!mapInstance.current) return;
 
-        // Always remove old layers first for a clean update
         if (circleRef.current) {
             circleRef.current.remove();
             circleRef.current = null;
@@ -343,21 +324,18 @@ const LocationPickerMap = ({ position, onPositionChange, areaCenter, locationNam
             centerMarkerRef.current = null;
         }
 
-        // If no area center is provided, stop here
         if (!areaCenter || areaCenter.lat == null || areaCenter.lng == null) {
             return;
         }
 
-        // Calculate initial distance to set correct initial color
         let isOutside = false;
         if (position && position.lat != null && position.lng != null) {
             isOutside = haversine(position.lat, position.lng, areaCenter.lat, areaCenter.lng) > areaRadius;
         }
-        const colorHex = isOutside ? '#ef4444' : '#16a34a'; // red-500 or moss-600
+        const colorHex = isOutside ? '#ef4444' : '#16a34a';
         const colorClass = isOutside ? 'bg-red-500' : 'bg-moss';
 
-        // Draw a new radius circle
-        circleRef.current = L.circle([areaCenter.lat, areaCenter.lng], {
+        circleRef.current = window.L.circle([areaCenter.lat, areaCenter.lng], {
             radius: areaRadius * 1000,
             color: colorHex,
             fillColor: colorHex,
@@ -366,31 +344,28 @@ const LocationPickerMap = ({ position, onPositionChange, areaCenter, locationNam
             dashArray: '5, 5'
         }).addTo(mapInstance.current);
         
-        // Add a marker for the area center
-        const centerIcon = L.divIcon({
-            className: "", // Remove default styles
+        const centerIcon = window.L.divIcon({
+            className: "",
             html: `<div class="flex flex-col items-center justify-end h-full w-full pointer-events-none">
                         <div class="px-2 py-0.5 ${colorClass} text-white rounded-full shadow-lg text-[9px] font-black uppercase tracking-tight text-center whitespace-nowrap transition-colors duration-300">
                             Trung tâm ${locationName}
                         </div>
                         <div class="w-2.5 h-2.5 ${colorClass} rounded-full border-2 border-white shadow-md -mt-1 transition-colors duration-300"></div>
                    </div>`,
-            iconSize: [150, 30], // Fixed size for reliable anchoring
-            iconAnchor: [75, 30] // Anchor at bottom-center
+            iconSize: [150, 30],
+            iconAnchor: [75, 30]
         });
 
-        centerMarkerRef.current = L.marker([areaCenter.lat, areaCenter.lng], {
+        centerMarkerRef.current = window.L.marker([areaCenter.lat, areaCenter.lng], {
             icon: centerIcon,
-            interactive: false, // This marker is just for display
-            draggable: false,   // Khẳng định ghim này không thể kéo thả
-            zIndexOffset: -100 // Ensure it's behind the draggable marker
+            interactive: false,
+            draggable: false,
+            zIndexOffset: -100
         }).addTo(mapInstance.current);
 
-        // Fly to the new area center to give context to the user
         mapInstance.current.flyTo([areaCenter.lat, areaCenter.lng], 13, { duration: 1 });
     }, [areaCenter, locationName, areaRadius]);
 
-    // Check distance and show warning when position changes
     useEffect(() => {
         if (!areaCenter || areaCenter.lat == null || areaCenter.lng == null || !position || position.lat == null || position.lng == null) {
             setWarning(null);
@@ -407,7 +382,6 @@ const LocationPickerMap = ({ position, onPositionChange, areaCenter, locationNam
             setWarning(null);
         }
 
-        // Dynamically update colors of circle and center marker
         if (circleRef.current) {
             const colorHex = isOutside ? '#ef4444' : '#16a34a';
             circleRef.current.setStyle({
@@ -418,7 +392,7 @@ const LocationPickerMap = ({ position, onPositionChange, areaCenter, locationNam
 
         if (centerMarkerRef.current) {
             const colorClass = isOutside ? 'bg-red-500' : 'bg-moss';
-            const centerIcon = L.divIcon({
+            const centerIcon = window.L.divIcon({
                 className: "", 
                 html: `<div class="flex flex-col items-center justify-end h-full w-full pointer-events-none">
                             <div class="px-2 py-0.5 ${colorClass} text-white rounded-full shadow-lg text-[9px] font-black uppercase tracking-tight text-center whitespace-nowrap transition-colors duration-300">
@@ -438,7 +412,6 @@ const LocationPickerMap = ({ position, onPositionChange, areaCenter, locationNam
 
         setIsSearching(true);
         try {
-            // Gọi API miễn phí của Nominatim (OpenStreetMap) để lấy tọa độ
             const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchQuery + ', Vietnam')}&limit=1`);
             const data = await response.json();
             
@@ -466,9 +439,7 @@ const LocationPickerMap = ({ position, onPositionChange, areaCenter, locationNam
     return (
         <div className="flex flex-col gap-3 w-full h-full">
             <div className="z-[10] flex flex-col gap-2 shrink-0">
-                {/* Container cho các công cụ điều khiển bản đồ */}
                 <div className="bg-white rounded-xl shadow-sm border border-stone-200 p-3 space-y-3">
-                    {/* Thanh tìm kiếm */}
                     <div className="flex-1 flex overflow-hidden shadow-sm">
                         <input 
                             type="text" 
@@ -487,7 +458,6 @@ const LocationPickerMap = ({ position, onPositionChange, areaCenter, locationNam
                             {isSearching ? '...' : 'TÌM'}
                         </button>
                     </div>
-                    {/* Ô nhập Vĩ độ / Kinh độ thủ công */}
                     <div className="flex gap-3">
                         <div className="flex-1">
                             <label className="text-[9px] font-black text-stone-500 uppercase tracking-wider mb-1 block">Vĩ độ (Lat)</label>
@@ -511,7 +481,6 @@ const LocationPickerMap = ({ position, onPositionChange, areaCenter, locationNam
                         </div>
                     </div>
                 </div>
-                {/* Warning message display */}
                 {warning && (
                     <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-3 text-xs rounded-r-xl shadow-sm" role="alert">
                         <p className="font-black uppercase text-sm mb-1">⚠️ Cảnh báo vị trí</p>
@@ -519,7 +488,6 @@ const LocationPickerMap = ({ position, onPositionChange, areaCenter, locationNam
                     </div>
                 )}
             </div>
-            {/* Vùng bản đồ */}
             <div className="relative flex-1 w-full min-h-[250px] rounded-2xl border-2 border-stone-200 overflow-hidden shadow-inner bg-stone-100 z-0">
                 <div ref={mapRef} className="w-full h-full z-0"></div>
             </div>

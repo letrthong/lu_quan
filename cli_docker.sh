@@ -33,6 +33,13 @@ show_usage() {
 
 # Function to check if container is running
 check_container_running() {
+    # Check if Docker daemon is running
+    if ! docker info > /dev/null 2>&1; then
+        echo "Error: Docker daemon is not running or not accessible."
+        echo "Please make sure the Docker service is started."
+        exit 1
+    fi
+
     if [ ! "$(docker ps -q -f name=$CONTAINER_NAME)" ]; then
         echo "Error: Container '$CONTAINER_NAME' is not running."
         echo "Please start the containers first using: $0 start"
@@ -77,7 +84,16 @@ case "$ACTION" in
             docker compose build
         fi
         echo "--> Starting containers..."
-        docker compose up
+        docker compose up -d
+        
+        echo "--> Waiting for container to start..."
+        sleep 3
+        
+        echo "--> Copying built index.html from container to host..."
+        docker cp telua_python_flask:/app/dist/index.html ./config/index.html || echo "Warning: Failed to copy index.html from container"
+        
+        echo "--> Attaching to container logs..."
+        docker compose logs -f
         ;;
     stop)
         echo "--> Stopping containers..."

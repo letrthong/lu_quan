@@ -1,4 +1,9 @@
-const { useState, useMemo, useEffect, useRef } = React;
+import React, { useState, useMemo, useEffect, useRef } from 'react';
+import Icon from './Icon';
+import { LocationPickerMap } from './MapComponents';
+import { HOTEL_TYPES, OPTIONAL_PHONE_TYPES } from '../constants';
+import HotelAPI from '../api';
+import { decodeBase64, encodeBase64, processImageUpload, isValidPhoneNumber, calculateDistance as haversine } from '../utils';
 
 const HotelEditForm = ({ hotel, provinces, onClose, onSaveSuccess, onToast }) => {
     // Quản lý vị trí bản đồ độc lập, khởi tạo với tọa độ hiện tại của khách sạn
@@ -107,15 +112,12 @@ const HotelEditForm = ({ hotel, provinces, onClose, onSaveSuccess, onToast }) =>
 
         const bannedWords = await HotelAPI.getBannedWords();
 
-        // --- START VALIDATION: Check location ---
         if (!locationId) {
             setApiError("Vui lòng chọn Tỉnh/Thành phố.");
             setIsSubmitting(false);
             return;
         }
-        // --- END VALIDATION ---
 
-        // --- START VALIDATION: Banned words in name and description ---
         const lowerName = name.toLowerCase();
         const lowerDescription = description.toLowerCase();
         if (bannedWords.some(word => lowerName.includes(word) || lowerDescription.includes(word))) {
@@ -123,33 +125,25 @@ const HotelEditForm = ({ hotel, provinces, onClose, onSaveSuccess, onToast }) =>
             setIsSubmitting(false);
             return;
         }
-        // --- END VALIDATION ---
 
-        // --- START VALIDATION: Description Min Length ---
         if (description.length < 3) {
             setApiError("Mô tả đặc điểm phải có ít nhất 3 ký tự.");
             setIsSubmitting(false);
             return;
         }
-        // --- END VALIDATION ---
 
-        // --- START VALIDATION: Kiểm tra số điện thoại hợp lệ của Việt Nam ---
         if ((!OPTIONAL_PHONE_TYPES.includes(type) || phone) && !isValidPhoneNumber(phone)) {
             setApiError("Số điện thoại không hợp lệ. Vui lòng kiểm tra lại (gồm 8-11 số).");
             setIsSubmitting(false);
             return;
         }
-        // --- END VALIDATION ---
 
-        // --- START VALIDATION: Kiểm tra định dạng Website ---
         let processedWebsite = website;
         if (processedWebsite) {
-            // Tự động thêm https:// nếu người dùng quên
             if (!processedWebsite.startsWith('http://') && !processedWebsite.startsWith('https://')) {
                 processedWebsite = 'https://' + processedWebsite;
             }
 
-            // Kiểm tra từ khóa cấm
             const lowerWebsite = processedWebsite.toLowerCase();
             if (bannedWords.some(word => lowerWebsite.includes(word))) {
                 setApiError("Website chứa từ khóa không cho phép.");
@@ -165,7 +159,6 @@ const HotelEditForm = ({ hotel, provinces, onClose, onSaveSuccess, onToast }) =>
                 return;
             }
         }
-        // --- END VALIDATION ---
         
         const base64Description = encodeBase64(description);
         const base64Phone = encodeBase64(phone);
@@ -204,7 +197,6 @@ const HotelEditForm = ({ hotel, provinces, onClose, onSaveSuccess, onToast }) =>
             });
     };
 
-    // Kiểm tra khoảng cách để vô hiệu hóa nút Gửi yêu cầu
     let isOutside = false;
     if (areaCenter && pickerPos) {
         isOutside = haversine(pickerPos.lat, pickerPos.lng, areaCenter.lat, areaCenter.lng) > areaRadius;
@@ -358,7 +350,6 @@ const HotelEditForm = ({ hotel, provinces, onClose, onSaveSuccess, onToast }) =>
                                     onClick={async () => {
                                         if (!websiteUrl) { setApiError("Vui lòng nhập URL để kiểm tra."); return; }
                                         let urlToTest = websiteUrl;
-                                        // Tự động thêm https:// nếu người dùng quên
                                         if (!urlToTest.startsWith('http://') && !urlToTest.startsWith('https://')) {
                                             urlToTest = 'https://' + urlToTest;
                                         }
@@ -374,7 +365,7 @@ const HotelEditForm = ({ hotel, provinces, onClose, onSaveSuccess, onToast }) =>
                                             new URL(urlToTest);
                                             window.open(urlToTest, '_blank');
                                             setApiError(null);
-                                            setWebsiteUrl(urlToTest); // Cập nhật state để hiển thị URL đã được sửa
+                                            setWebsiteUrl(urlToTest);
                                         } catch (error) {
                                             setApiError("Website không hợp lệ. Vui lòng nhập URL bắt đầu bằng http:// hoặc https://");
                                         }
@@ -412,7 +403,6 @@ const HotelEditForm = ({ hotel, provinces, onClose, onSaveSuccess, onToast }) =>
                             </div>
                         </div>
                     </div>
-                    {/* Hiển thị lỗi từ API */}
                     {apiError && (
                         <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-3 rounded-lg text-xs" role="alert">
                             <p className="font-bold">Không thể lưu thay đổi</p>
@@ -431,3 +421,5 @@ const HotelEditForm = ({ hotel, provinces, onClose, onSaveSuccess, onToast }) =>
         </div>
     );
 };
+
+export default HotelEditForm;

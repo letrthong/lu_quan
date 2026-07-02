@@ -1,3 +1,5 @@
+import React from 'react';
+
 const Icon = ({ name, size = 20, className = "" }) => {
     // Render trực tiếp SVG cho icon github để đảm bảo luôn hiển thị 100% 
     // (Khắc phục triệt để lỗi khi thư viện icon qua CDN chưa kịp tải hoặc bị thiếu)
@@ -18,3 +20,5 @@ const Icon = ({ name, size = 20, className = "" }) => {
         />
     );
 };
+
+export default Icon;

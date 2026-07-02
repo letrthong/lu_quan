@@ -1,15 +1,7 @@
-const REPORT_REASONS = {
-    "wrong_phone": "Số điện thoại sai",
-    "wrong_hotel_name": "Tên lữ quán sai",
-    "wrong_map_location": "Vị trí trên bản đồ sai",
-    "wrong_address": "Địa chỉ không đúng",
-    "website_broken": "Website không hoạt động",
-    "hotel_closed": "Lữ quán đã đóng cửa",
-    "spam_or_fake": "Thông tin giả mạo/Spam",
-    "other": "Lý do khác"
-};
-
-const { useState, useMemo } = React;
+import React, { useState, useMemo } from 'react';
+import Icon from './Icon';
+import HotelAPI from '../api';
+import { REPORT_REASONS, getReasonText } from '../constants';
 
 const ReportManager = ({ reports, setFilterCity, onToast, onProcessReport, onReportDeleted }) => {
     const [expandedHotelId, setExpandedHotelId] = useState(null);
@@ -27,12 +19,7 @@ const ReportManager = ({ reports, setFilterCity, onToast, onProcessReport, onRep
         }
     };
 
-    const getReasonText = (reason) => {
-        return REPORT_REASONS[reason] || reason;
-    };
-
     const handleToggleDetails = async (hotelId) => {
-        // Nếu đang click vào mục đã mở, đóng nó lại
         if (expandedHotelId === hotelId) {
             setExpandedHotelId(null);
             setDetailedReports([]);
@@ -61,9 +48,9 @@ const ReportManager = ({ reports, setFilterCity, onToast, onProcessReport, onRep
             const newDetails = detailedReports.filter(r => r.reportId !== reportId);
             setDetailedReports(newDetails);
             if (newDetails.length === 0) {
-                setExpandedHotelId(null); // Đóng mục mở rộng nếu không còn report nào
+                setExpandedHotelId(null);
             }
-            if (onReportDeleted) onReportDeleted(); // Gọi lại parent refresh UI
+            if (onReportDeleted) onReportDeleted();
         } catch (error) {
             onToast(error.message || "Lỗi khi xóa báo cáo.");
         }
@@ -77,12 +64,10 @@ const ReportManager = ({ reports, setFilterCity, onToast, onProcessReport, onRep
         if (!reports) return [];
         let result = [...reports];
         
-        // Lọc theo lý do báo cáo
         if (filterReason) {
             result = result.filter(r => r.reason === filterReason);
         }
         
-        // Sắp xếp (Theo lượng báo cáo hoặc Mới nhất)
         if (sortBy === 'count') {
             result.sort((a, b) => (b.reportCount || 1) - (a.reportCount || 1));
         } else {
@@ -181,14 +166,12 @@ const ReportManager = ({ reports, setFilterCity, onToast, onProcessReport, onRep
                                     <div>
                                         {detailedReports.map((detail, index) => (
                                             <div key={detail.reportId} className="relative flex">
-                                                {/* Timeline line and dot */}
                                                 <div className="flex flex-col items-center mr-4">
                                                     <div className={`flex-shrink-0 w-3 h-3 rounded-full border-2 border-white shadow ${index === 0 ? 'bg-red-500 animate-pulse' : 'bg-stone-400'}`}></div>
                                                     {index < detailedReports.length - 1 && (
                                                         <div className="w-px h-full bg-stone-200"></div>
                                                     )}
                                                 </div>
-                                                {/* Content */}
                                                 <div className={`flex-1 ${index < detailedReports.length - 1 ? 'pb-5' : ''}`}>
                                                     <div className="flex justify-between items-center text-xs -mt-1">
                                                         <p className="font-bold text-stone-700">{getReasonText(detail.reason)}</p>
@@ -217,3 +200,5 @@ const ReportManager = ({ reports, setFilterCity, onToast, onProcessReport, onRep
         </div>
     );
 };
+
+export default ReportManager;

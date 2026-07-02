@@ -1,17 +1,8 @@
-/**
- * SchemaManager Component
- * 
- * Component cho phép admin quản lý (thêm, sửa, xóa) các khu vực (schema).
- * Component này được viết bằng JSX và cần môi trường có Babel transpiler để chạy,
- * phù hợp với cấu trúc dự án đã mô tả trong README.md.
- * 
- * @param {object} props - Props của component.
- * @param {object} props.api - Đối tượng HotelAPI đã được khởi tạo để gọi API.
- * @param {function} props.onToast - Hàm để hiển thị thông báo (toast).
- */
-function SchemaManager({ api, onToast }) {
-    const { useState, useEffect, useCallback, useMemo } = React;
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import Icon from './Icon';
+import { LocationPickerMap } from './MapComponents';
 
+function SchemaManager({ api, onToast }) {
     const [schemas, setSchemas] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState(null);
@@ -325,8 +316,8 @@ function SchemaManager({ api, onToast }) {
                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{schema.radius || 10} km</td>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{schema.updatedAt ? schema.updatedAt.split('-').reverse().join('/') : 'Chưa rõ'}</td>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium flex gap-2">
-                                            <button onClick={() => handleEdit(schema)} className="text-indigo-600 hover:text-indigo-900">Sửa</button>
-                                            <button onClick={() => handleDelete(schema.id)} className="text-red-600 hover:text-red-900">Xóa</button>
+                                            <button type="button" onClick={() => handleEdit(schema)} className="text-indigo-600 hover:text-indigo-900">Sửa</button>
+                                            <button type="button" onClick={() => handleDelete(schema.id)} className="text-red-600 hover:text-red-900">Xóa</button>
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{schema.filePathId}</td>
                                     </tr>
@@ -339,3 +330,5 @@ function SchemaManager({ api, onToast }) {
         </div>
     );
 }
+
+export default SchemaManager;

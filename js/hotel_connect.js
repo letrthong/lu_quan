@@ -1,4 +1,20 @@
-const { useState, useMemo, useEffect, useRef } = React;
+import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
+import ReactDOM from 'react-dom/client';
+import Icon from './components/Icon';
+import Header from './components/Header';
+import Footer from './components/Footer';
+import AdminTabs from './components/AdminTabs';
+import { MainLeafletMap } from './components/MapComponents';
+import SchemaManager from './components/SchemaManager';
+import HotelRequestForm from './components/HotelRequestForm';
+import HotelEditForm from './components/HotelEditForm';
+import ReportManager from './components/ReportManager';
+import HotelDetail from './components/HotelDetail';
+import NearByComponents from './components/NearByComponents';
+import { HOTEL_TYPES, OPTIONAL_PHONE_TYPES, getIconForHotelType, getReasonText } from './constants';
+import { LanguageProvider, useTranslation } from './i18n';
+import HotelAPI from './api';
+import { decodeBase64, encodeBase64, processImageUpload, isValidPhoneNumber, calculateDistance } from './utils';
 
 // Polyfill for crypto.randomUUID() in non-secure contexts or older browsers
 if (window.crypto && !window.crypto.randomUUID) {
@@ -25,85 +41,6 @@ const removeVietnameseTones = (str) => {
               .replace(/đ/g, 'd').replace(/Đ/g, 'D')
               .toLowerCase()
               .replace(/\s+/g, ' ').trim();
-};
-
-// Hàm tiện ích giải mã Base64
-const decodeBase64 = (str) => {
-    if (!str) return "";
-    try {
-        return decodeURIComponent(escape(atob(str)));
-    } catch (e) {
-        return str;
-    }
-};
-
-// Hàm tiện ích mã hóa Base64
-const encodeBase64 = (str) => {
-    if (!str) return "";
-    return btoa(unescape(encodeURIComponent(str)));
-};
-
-// Hàm tiện ích xử lý ảnh upload (resize và chuyển sang WebP base64)
-const processImageUpload = (file) => {
-    return new Promise((resolve, reject) => {
-        if (!file) return reject("Vui lòng chọn tệp ảnh.");
-        if (!file.type.startsWith('image/')) return reject("Vui lòng chọn một tệp hình ảnh hợp lệ.");
-
-        const img = new Image();
-        const objectUrl = URL.createObjectURL(file);
-        
-        img.onload = () => {
-            URL.revokeObjectURL(objectUrl);
-            const canvas = document.createElement('canvas');
-            let width = img.width;
-            let height = img.height;
-            const MAX_SIZE = 800;
-
-            if (width > height && width > MAX_SIZE) {
-                height = Math.round((height * MAX_SIZE) / width);
-                width = MAX_SIZE;
-            } else if (height > MAX_SIZE) {
-                width = Math.round((width * MAX_SIZE) / height);
-                height = MAX_SIZE;
-            }
-
-            canvas.width = width;
-            canvas.height = height;
-
-            const ctx = canvas.getContext('2d');
-            ctx.drawImage(img, 0, 0, width, height);
-
-            resolve(canvas.toDataURL('image/webp', 0.8));
-        };
-        
-        img.onerror = () => {
-            URL.revokeObjectURL(objectUrl);
-            reject("Không thể xử lý hình ảnh này. Vui lòng thử ảnh khác.");
-        };
-
-        img.src = objectUrl;
-    });
-};
-
-// Hàm tiện ích kiểm tra số điện thoại hợp lệ của Việt Nam
-const isValidPhoneNumber = (phone) => {
-    if (!phone) return false;
-    const cleanPhone = phone.replace(/\s+/g, '');
-    return /^[0-9]{8,11}$/.test(cleanPhone);
-};
-
-// Hàm tiện ích tính khoảng cách giữa 2 tọa độ (theo km) sử dụng công thức Haversine
-const calculateDistance = (lat1, lng1, lat2, lng2) => {
-    if (lat1 == null || lng1 == null || lat2 == null || lng2 == null) return Infinity;
-    const R = 6371; // Bán kính Trái Đất (km)
-    const dLat = (lat2 - lat1) * Math.PI / 180;
-    const dLng = (lng2 - lng1) * Math.PI / 180;
-    const a =
-        Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-        Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-        Math.sin(dLng / 2) * Math.sin(dLng / 2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    return R * c;
 };
 
 // Custom Component: Multi-Select cho Khu vực
@@ -388,7 +325,7 @@ const TypeMultiSelect = ({ types, selectedIds, onChange, t }) => {
 };
 
 const MainApp = () => {
-    const { t, lang, changeLang } = window.useTranslation();
+    const { t, lang, changeLang } = useTranslation();
     const [hotels, setHotels] = useState([]);
     const [provinces, setProvinces] = useState([]);
     const [isLoading, setIsLoading] = useState(false);
@@ -1473,9 +1410,9 @@ const MainApp = () => {
 };
 
 const App = () => (
-    <window.LanguageProvider>
+    <LanguageProvider>
         <MainApp />
-    </window.LanguageProvider>
+    </LanguageProvider>
 );
 
 const root = ReactDOM.createRoot(document.getElementById('root'));

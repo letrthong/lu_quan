@@ -1,16 +1,11 @@
-﻿﻿﻿﻿﻿﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Lữ Quán - Lữ Quán - Kết Nối Du Lịch </title>
+    <title>Lữ Quán - Kết Nối Du Lịch</title>
     <!-- Tailwind CSS for Styling -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- React & ReactDOM -->
-    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-    <!-- Babel for JSX Transpilation -->
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <!-- Leaflet CSS & JS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" integrity="sha512-xodZBNTC5n17Xt2atTPuE1HxjVMSvLVW9ocqUKLsCC5CXdbqCmblAshOMAS6/keqq/sMZMZ19scR4PsZChSR7A==" crossorigin=""/>
     <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js" integrity="sha512-XQoYMqMTK8LvdxXYG3nZ448hOEQiglfqkJs1NOQV44cWnUrBc8PkAOcXy20w0vlaXaVUearIOBhiXZ5V3ynxwA==" crossorigin=""></script>
@@ -35,7 +30,7 @@
         }
         body { 
             font-family: 'Be Vietnam Pro', 'Inter', sans-serif; 
-            overscroll-behavior-y: contain; /* Ngăn chặn pull-to-refresh ngoài ý muốn trên trình duyệt di động */
+            overscroll-behavior-y: contain;
         }
         .scrollbar-hide::-webkit-scrollbar { display: none; }
         .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
@@ -68,7 +63,7 @@
 </head>
 <body class="bg-stone-50 overflow-hidden m-0 p-0">
     <div id="root">
-        <!-- Màn hình chờ (Loading) sẽ hiển thị trong lúc tải và biên dịch JS -->
+        <!-- Màn hình chờ (Loading) -->
         <div class="fixed inset-0 bg-stone-50 flex flex-col items-center justify-center z-[9999]">
             <div class="relative w-20 h-20 mb-6">
                 <div class="absolute inset-0 border-4 border-stone-200 rounded-full"></div>
@@ -78,120 +73,11 @@
                 </div>
             </div>
             <h2 class="text-stone-800 font-black text-xl uppercase tracking-widest mb-2">Lữ Quán</h2>
-            <p class="text-stone-500 text-xs font-bold uppercase tracking-widest animate-pulse">Đang tải dữ liệu, vui lòng chờ...</p>
+            <p class="text-stone-500 text-xs font-bold uppercase tracking-widest animate-pulse">Đang tải ứng dụng...</p>
         </div>
     </div>
 
-    <!-- Nạp JS động dựa trên version trong config.json -->
-    <!-- {% raw %} -->
-    <script>
-        async function loadAppWithVersion() {
-            try {
-                // Luôn lấy file config mới nhất từ server, không dùng cache
-                const res = await fetch('/luquan/js/config.json?t=' + new Date().getTime());
-                const config = await res.json();
-                const version = config.app_version || '1.0.0';
-                
-                const savedVersion = localStorage.getItem('luquan_app_version');
-
-                if (savedVersion && savedVersion !== version) {
-                    console.log(`Phát hiện phiên bản mới: ${savedVersion} -> ${version}. Cập nhật cache...`);
-                    localStorage.removeItem('luquan_app_version');
-                    localStorage.removeItem('luquan_cached_scripts');
-                }
-
-                const cachedScripts = localStorage.getItem('luquan_cached_scripts');
-
-                if (cachedScripts && savedVersion === version) {
-                    console.log("Sử dụng JS từ cache localStorage...");
-                    const script = document.createElement('script');
-                    script.innerHTML = cachedScripts;
-                    document.body.appendChild(script);
-                    return;
-                }
-
-                console.log("Tải và biên dịch JS mới...");
-                localStorage.setItem('luquan_app_version', version);
-
-                // 1. Tải api.js
-                const apiPromise = fetch('/luquan/js/api.js?v=' + version).then(r => {
-                    if (!r.ok) throw new Error(`Không thể tải api.js (HTTP ${r.status})`);
-                    return r.text();
-                });
-
-                // 2. Tải các file React/JSX song song
-                const babelScripts = [
-                    "/luquan/js/constants.js",
-                    "/luquan/js/components/Header.js",
-                    "/luquan/js/components/Icon.js",
-                    "/luquan/js/components/MapComponents.js",
-                    "/luquan/js/components/SchemaManager.js",
-                    "/luquan/js/components/HotelRequestForm.js",
-                    "/luquan/js/components/HotelEditForm.js",
-                    "/luquan/js/components/ReportManager.js",
-                    "/luquan/js/components/ReportForm.js",
-                    "/luquan/js/components/AdminTabs.js",
-                    "/luquan/js/components/Footer.js",
-                    "/luquan/js/components/HotelDetail.js",
-					"/luquan/js/components/NearByComponents.js",
-                    "/luquan/js/i18n.js",
-                    "/luquan/js/hotel_connect.js" // File chính nên ở cuối
-                ];
-
-                const babelPromises = babelScripts.map(src => fetch(src + '?v=' + version).then(r => {
-                    if (!r.ok) throw new Error(`Không thể tải ${src} (HTTP ${r.status})`);
-                    return r.text();
-                }));
-
-                const [apiCode, ...babelCodes] = await Promise.all([apiPromise, ...babelPromises]);
-                
-                // Tự động loại bỏ các khai báo trùng lặp (vd: const { useState } = React;) từ các file con
-                const cleanedBabelCodes = babelCodes.map(code => code.replace(/const\s+\{[^}]+\}\s*=\s*React\s*;/g, ''));
-                // Gom chung 1 khai báo React Hooks duy nhất lên đầu file gộp
-                const masterReactDecl = "const { useState, useEffect, useRef, useMemo, useCallback, createContext, useContext } = React;\n";
-                const combinedBabelCode = masterReactDecl + cleanedBabelCodes.join('\n');
-
-                const waitForBabel = () => new Promise(resolve => {
-                    if (window.Babel) return resolve();
-                    const interval = setInterval(() => {
-                        if (window.Babel) {
-                            clearInterval(interval);
-                            resolve();
-                        }
-                    }, 50);
-                });
-                await waitForBabel();
-
-                // 3. Biên dịch JSX sang JS thuần bằng Babel (sử dụng classic runtime để tránh tự động sinh ra câu lệnh import)
-                const transpiledCode = Babel.transform(combinedBabelCode, { 
-                    presets: [['react', { runtime: 'classic' }]] 
-                }).code;
-                
-                // Gộp code API và code đã biên dịch
-                const finalCode = apiCode + '\n' + transpiledCode;
-                
-                // 4. Lưu vào localStorage cache
-                try {
-                    localStorage.setItem('luquan_cached_scripts', finalCode);
-                } catch (e) {
-                    console.warn("Không thể lưu cache vào localStorage (có thể quá dung lượng):", e);
-                }
-
-                // Thực thi script
-                const script = document.createElement('script');
-                script.innerHTML = finalCode;
-                document.body.appendChild(script);
-
-            } catch (err) {
-                console.error("Lỗi khi tải config hoặc khởi tạo ứng dụng:", err);
-                // Xóa cache để bắt buộc trình duyệt tải lại và biên dịch ở lần chạy sau
-                localStorage.removeItem('luquan_app_version');
-                localStorage.removeItem('luquan_cached_scripts');
-            }
-        }
-
-        loadAppWithVersion();
-    </script>
-    <!-- {% endraw %} -->
+    <!-- Mount standard Vite ES Module entrypoint -->
+    <script type="module" src="js/hotel_connect.js"></script>
 </body>
 </html>

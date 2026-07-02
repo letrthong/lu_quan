@@ -1,3 +1,8 @@
+import React from 'react';
+import Icon from './Icon';
+import AdminTabs from './AdminTabs';
+import { useTranslation } from '../i18n';
+
 const Header = ({
     isAdmin,
     onShowSchemaManager,
@@ -10,7 +15,7 @@ const Header = ({
     onLogoutAdmin,
     onShowAdminLogin
 }) => {
-    const { t, lang, changeLang } = window.useTranslation();
+    const { t, lang, changeLang } = useTranslation();
 
     return (
         <header className={`shrink-0 px-4 md:px-8 lg:px-10 pt-[max(env(safe-area-inset-top),1.25rem)] pb-3 md:pt-8 md:pb-4 shadow-sm flex items-center justify-between z-30 transition-all duration-300 ${isAdmin ? 'bg-stone-800' : 'bg-moss'} text-white`}>
@@ -68,3 +73,5 @@ const Header = ({
         </header>
     );
 };
+
+export default Header;

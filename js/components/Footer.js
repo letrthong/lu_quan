@@ -1,3 +1,6 @@
+import React from 'react';
+import Icon from './Icon';
+
 const Footer = ({ onAboutClick }) => {
     return (
         <footer className="hidden md:block absolute bottom-0 left-0 w-full z-40 bg-white/80 backdrop-blur-md border-t border-white/50 shadow-[0_-4px_20px_rgba(0,0,0,0.05)]">
@@ -16,3 +19,5 @@ const Footer = ({ onAboutClick }) => {
         </footer>
     );
 };
+
+export default Footer;

@@ -1,7 +1,7 @@
-const { useState, createContext, useContext } = React;
+import React, { useState, createContext, useContext } from 'react';
 
 // Từ điển đa ngôn ngữ
-window.TRANSLATIONS = {
+export const TRANSLATIONS = {
     vi: {
         search_placeholder: "Tìm tên, địa chỉ, thành phố...",
         all_regions: "Tất cả khu vực",
@@ -44,11 +44,11 @@ window.TRANSLATIONS = {
     }
 };
 
-window.LanguageContext = createContext();
+export const LanguageContext = createContext();
 
-window.useTranslation = () => useContext(window.LanguageContext);
+export const useTranslation = () => useContext(LanguageContext);
 
-window.LanguageProvider = ({ children }) => {
+export const LanguageProvider = ({ children }) => {
     // Đọc ngôn ngữ lưu trên LocalStorage, mặc định là Tiếng Việt
     const [lang, setLang] = useState(() => localStorage.getItem('luquan_lang') || 'vi');
     
@@ -59,12 +59,12 @@ window.LanguageProvider = ({ children }) => {
 
     // Hàm t(key): Nhận key và trả về string ứng với ngôn ngữ hiện tại
     const t = (key) => {
-        return window.TRANSLATIONS[lang]?.[key] || window.TRANSLATIONS['vi']?.[key] || key;
+        return TRANSLATIONS[lang]?.[key] || TRANSLATIONS['vi']?.[key] || key;
     };
 
     return (
-        <window.LanguageContext.Provider value={{ lang, changeLang, t }}>
+        <LanguageContext.Provider value={{ lang, changeLang, t }}>
             {children}
-        </window.LanguageContext.Provider>
+        </LanguageContext.Provider>
     );
 };
