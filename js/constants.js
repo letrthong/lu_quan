@@ -41,3 +41,11 @@ const getIconForHotelType = (type) => {
         default: return 'map-pin';
     }
 };
+
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = {
+        HOTEL_TYPES,
+        OPTIONAL_PHONE_TYPES,
+        getIconForHotelType
+    };
+}

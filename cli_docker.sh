@@ -12,7 +12,8 @@ show_usage() {
     echo "  stop          Stop and remove running containers"
     echo "  restart       Stop and start containers without rebuilding"
     echo "  access        Access the web service container's shell (bash)"
-    echo "  run_unittest  Run unit tests inside the container"
+    echo "  run_unittest  Run backend Python unit tests inside the container"
+    echo "  js_unittest   Run frontend JS unit tests inside the container"
     echo "  help          Show this help message"
     echo ""
     echo "Options:"
@@ -24,7 +25,8 @@ show_usage() {
     echo "  $0 --no-cache             Shortcut to build (without cache) and start"
     echo "  $0 stop                   Stop running containers"
     echo "  $0 access                 Access container bash terminal"
-    echo "  $0 run_unittest           Run tests inside container"
+    echo "  $0 run_unittest           Run backend Python tests inside container"
+    echo "  $0 js_unittest            Run frontend JS tests inside container"
     echo ""
     echo "If no action is provided, the help menu will be displayed."
 }
@@ -48,7 +50,7 @@ for arg in "$@"; do
         --no-cache)
             BUILD_CACHE="false"
             ;;
-        start|stop|restart|access|run_unittest|help|--help|-h)
+        start|stop|restart|access|run_unittest|js_unittest|help|--help|-h)
             ACTION="$arg"
             ;;
     esac
@@ -96,6 +98,11 @@ case "$ACTION" in
         check_container_running
         echo "--> Running unit tests inside container ($CONTAINER_NAME)..."
         docker exec -it "$CONTAINER_NAME" env PYTHONPATH=src python -m unittest discover -s src/unittest
+        ;;
+    js_unittest)
+        check_container_running
+        echo "--> Running JS unit tests inside container ($CONTAINER_NAME)..."
+        docker exec -it "$CONTAINER_NAME" node --test js/unittest
         ;;
     help|--help|-h)
         show_usage
