@@ -95,7 +95,7 @@ case "$ACTION" in
     run_unittest)
         check_container_running
         echo "--> Running unit tests inside container ($CONTAINER_NAME)..."
-        docker exec -it "$CONTAINER_NAME" python -m unittest discover -s src
+        docker exec -it "$CONTAINER_NAME" env PYTHONPATH=src python -m unittest discover -s src/unittest
         ;;
     help|--help|-h)
         show_usage
