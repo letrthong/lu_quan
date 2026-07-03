@@ -2,10 +2,15 @@
 import os
 import json
 import uuid
-from datetime import datetime
-from .json_utils import read_json_file, write_json_file
 
-from .hotel_constants import HotelField, HOTEL_SCHEMA_FILE_PATH
+import sys
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from datetime import datetime
+from  json_utils import read_json_file, write_json_file
+
+from  hotel_constants import HotelField, HOTEL_SCHEMA_FILE_PATH
 
 def read_schema():
     return read_json_file(HOTEL_SCHEMA_FILE_PATH)
