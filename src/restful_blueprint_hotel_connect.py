@@ -13,8 +13,8 @@ from flask import Blueprint, jsonify, request, send_from_directory
 
 from  hotel_constants import HOTEL_CONFIG_DIR, HotelField, HotelStatus
 from  geo_utils import haversine
-from   import hotel_schema_service as schema_svc
-from   import hotel_helpers as helpers
+from  hotel_schema_service import hotel_schema_service as schema_svc
+from  hotel_helpers  import hotel_helpers as helpers
 
 hotel_connect_api = Blueprint('hotel_connect_api', __name__, url_prefix='/api/hotelconnect/v1')
 
