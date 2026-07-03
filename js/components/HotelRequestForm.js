@@ -11,6 +11,7 @@ const HotelRequestForm = ({ provinces, onClose, onSubmitSuccess, onToast }) => {
         areaRadius,
         locationId,
         locationName,
+        areaCenter,
         selectedType,
         setSelectedType,
         isSubmitting,

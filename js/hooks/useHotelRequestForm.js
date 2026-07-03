@@ -222,6 +222,7 @@ export const useHotelRequestForm = (provinces, onClose, onSubmitSuccess, onToast
         areaRadius,
         locationId,
         locationName,
+        areaCenter,
         selectedType,
         setSelectedType,
         isSubmitting,
