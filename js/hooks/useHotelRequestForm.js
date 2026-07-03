@@ -226,6 +226,7 @@ export const useHotelRequestForm = (provinces, onClose, onSubmitSuccess, onToast
         setSelectedType,
         isSubmitting,
         apiError,
+        setApiError,
         websiteUrl,
         setWebsiteUrl,
         imageBase64,

@@ -6,13 +6,8 @@ Centralized constants for hotel_connect project.
 """
 
 
-# --- Config directory and file paths (không hardcode) ---
-CONFIG_DIR = "/app/config/hotel_connect"
-HOTEL_SCHEMA_FILE_PATH = f"{CONFIG_DIR}/hotel_schema.json"
-
-# --- Data file names ---
-HOTEL_REQUESTS_FILE = "hotel_requests.json"
-HOTEL_REPORTS_FILE = "hotel_reports.json"
+# --- Config directory and file paths (imported from hotel_config) ---
+from hotel_config import CONFIG_DIR, HOTEL_SCHEMA_FILE_PATH, HOTEL_REQUESTS_FILE, HOTEL_REPORTS_FILE
 # hotel_constants.py
 
 # --- Field name constants ---

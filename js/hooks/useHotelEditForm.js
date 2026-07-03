@@ -207,6 +207,7 @@ export const useHotelEditForm = (hotel, provinces, onClose, onSaveSuccess, onToa
         setPickerPos,
         isSubmitting,
         apiError,
+        setApiError,
         selectedType,
         setSelectedType,
         decodedWebsite,

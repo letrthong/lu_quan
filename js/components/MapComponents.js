@@ -5,8 +5,8 @@ export const createHotelIcon = (hotel, isSelected) => {
     let svgPath = '<path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"></path><circle cx="12" cy="10" r="3"></circle>'; // Icon map-pin
 
     if (hotel.type === 'hotel') {
-        bgColor = 'bg-teal-500'; // Màu xanh ngọc cho Khách sạn
-        svgPath = '<rect x="4" y="2" width="16" height="20" rx="2" ry="2"/><path d="M9 22v-4h6v4"/><path d="M8 6h.01"/><path d="M16 6h.01"/><path d="M12 6h.01"/><path d="M12 10h.01"/><path d="M12 14h.01"/><path d="M16 10h.01"/><path d="M16 14h.01"/><path d="M8 10h.01"/><path d="M8 14h.01"/>'; // Icon building
+        bgColor = 'bg-indigo-600'; // Màu xanh Indigo sang trọng cho Khách sạn lớn
+        svgPath = '<path d="M10 22v-6.57"/><path d="M12 11h.01"/><path d="M12 7h.01"/><path d="M16 11h.01"/><path d="M16 7h.01"/><path d="M8 11h.01"/><path d="M8 7h.01"/><path d="M20 22v-6.57"/><path d="M4 22v-6.57"/><path d="M22 22H2"/><path d="M2 15h20"/><path d="M2 9a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v13H2V9z"/>'; // Icon hotel chính thức của Lucide
     } else if (hotel.type === 'motel') {
         bgColor = 'bg-blue-400'; // Màu xanh lam nhạt cho Nhà nghỉ
         svgPath = '<path d="M2 20v-8a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v8"/><path d="M4 10V6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v4"/><path d="M12 4v6"/><path d="M2 18h20"/>'; // Icon bed-double
@@ -37,6 +37,9 @@ export const createHotelIcon = (hotel, isSelected) => {
     } else if (hotel.type === 'transport') {
         bgColor = 'bg-cyan-600'; // Màu xanh lơ cho phương tiện di chuyển
         svgPath = '<path d="M8 6v6"/><path d="M15 6v6"/><path d="M2 12h19.6"/><path d="M18 18h3s.5-1.7.8-2.8c.1-.4.2-.8.2-1.2 0-.4-.1-.8-.2-1.2l-1.4-5C20.1 6.8 19.1 6 18 6H4a2 2 0 0 0-2 2v10h3"/><circle cx="7" cy="18" r="2"/><circle cx="16" cy="18" r="2"/>'; // Icon bus
+    } else if (hotel.type === 'coffee') {
+        bgColor = 'bg-amber-800'; // Màu nâu cà phê ấm áp cho Quán cà phê
+        svgPath = '<path d="M17 8h1a4 4 0 1 1 0 8h-1"/><path d="M3 8h14v9a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4Z"/><line x1="6" x2="6" y1="2" y2="4"/><line x1="10" x2="10" y1="2" y2="4"/><line x1="14" x2="14" y1="2" y2="4"/>'; // Icon coffee
     } else if (hotel.type === 'local_food') {
         bgColor = 'bg-orange-500'; // Màu cam sáng cho Quán bán món địa phương
         svgPath = '<path d="M17 8h1a4 4 0 1 1 0 8h-1"/><path d="M3 8h14v9a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4Z"/><line x1="6" x2="6" y1="2" y2="4"/><line x1="10" x2="10" y1="2" y2="4"/><line x1="14" x2="14" y1="2" y2="4"/>'; // Icon coffee

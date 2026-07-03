@@ -10,6 +10,7 @@ const HotelEditForm = ({ hotel, provinces, onClose, onSaveSuccess, onToast }) =>
         setPickerPos,
         isSubmitting,
         apiError,
+        setApiError,
         selectedType,
         setSelectedType,
         decodedWebsite,
