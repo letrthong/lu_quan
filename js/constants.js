@@ -19,7 +19,7 @@ export const HOTEL_TYPES = [
 ];
 
 // Danh sách các loại hình không bắt buộc nhập số điện thoại
-export const OPTIONAL_PHONE_TYPES = ['entertainment', 'local_food', 'religion', 'gas_station', 'ev_station'];
+export const OPTIONAL_PHONE_TYPES = ['entertainment', 'local_food', 'coffee', 'religion', 'gas_station', 'ev_station'];
 
 export const getIconForHotelType = (type) => {
     switch (type) {

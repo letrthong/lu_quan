@@ -14,7 +14,7 @@ from geo_utils import haversine
 from datetime import datetime, timezone
 
 # Import all constants from hotel_constants.py
-from hotel_constants import CONFIG_DIR, HotelField, HotelStatus
+from hotel_constants import HOTEL_CONFIG_DIR as CONFIG_DIR, HotelField, HotelStatus
 from hotel_helpers import get_hotel_file_path, read_requests, write_requests, read_reports, write_reports, validate_hotel_request, update_status
 
 # Cấu hình logging hiển thị ra terminal
@@ -56,6 +56,7 @@ def _find_hotel_details_by_id(hotel_id):
     return None
 
 @app.route('/luquan/')
+@app.route('/')
 @app.route('/luquan/<path:page_name>')
 @cross_origin()
 def hotel_connect_resource_sub(page_name=None):
