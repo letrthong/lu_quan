@@ -22,7 +22,7 @@ history_lock = threading.Lock()
 @hotel_connect_api.route('/schema', methods=['GET'])
 @cross_origin()
 def get_schema():
-    import services
+    import app as services
     with schema_lock:
         data = services.read_schema()
     return jsonify(data)
@@ -30,7 +30,7 @@ def get_schema():
 @hotel_connect_api.route('/schema', methods=['POST'])
 @cross_origin()
 def add_schema():
-    import services
+    import app as services
     req_data = request.json
     if not req_data:
         return jsonify({HotelField.ERROR: "Dữ liệu không hợp lệ"}), 400
@@ -48,7 +48,7 @@ def add_schema():
 @hotel_connect_api.route('/schema/<item_id>', methods=['PUT'])
 @cross_origin()
 def update_schema(item_id):
-    import services
+    import app as services
     req_data = request.json
     if not req_data:
         return jsonify({HotelField.ERROR: "Dữ liệu không hợp lệ"}), 400
@@ -72,7 +72,7 @@ def update_schema(item_id):
 @hotel_connect_api.route('/schema/<item_id>', methods=['DELETE'])
 @cross_origin()
 def delete_schema(item_id):
-    import services
+    import app as services
     with schema_lock:
         data = services.read_schema()
         new_data = services.delete_schema_item(data, item_id)
@@ -84,7 +84,7 @@ def delete_schema(item_id):
 @hotel_connect_api.route('/hotels/request', methods=['POST'])
 @cross_origin()
 def submit_hotel_request():
-    import services
+    import app as services
     req_data = request.json
     if not req_data:
         return jsonify({HotelField.ERROR: "Dữ liệu không hợp lệ"}), 400
@@ -124,7 +124,7 @@ def submit_hotel_request():
 @hotel_connect_api.route('/hotels/request', methods=['GET'])
 @cross_origin()
 def get_hotel_requests():
-    import services
+    import app as services
     with requests_lock:
         data = services.read_requests()
     return jsonify(data)
@@ -132,7 +132,7 @@ def get_hotel_requests():
 @hotel_connect_api.route('/requests/<request_id>/approve', methods=['POST'])
 @cross_origin()
 def approve_hotel_request(request_id):
-    import services
+    import app as services
     with requests_lock:
         all_requests = services.read_requests()
         hotel_to_approve = None
@@ -181,7 +181,7 @@ def approve_hotel_request(request_id):
 @hotel_connect_api.route('/requests/<request_id>/reject', methods=['POST'])
 @cross_origin()
 def reject_hotel_request(request_id):
-    import services
+    import app as services
     with requests_lock:
         all_requests = services.read_requests()
         remaining_requests = [req for req in all_requests if req.get('id') != request_id]
@@ -193,7 +193,7 @@ def reject_hotel_request(request_id):
 @hotel_connect_api.route('/requests/<request_id>', methods=['PUT'])
 @cross_origin()
 def update_hotel_request(request_id):
-    import services
+    import app as services
     req_data = request.json
     if not req_data:
         return jsonify({HotelField.ERROR: "Dữ liệu không hợp lệ"}), 400
@@ -220,7 +220,7 @@ def update_hotel_request(request_id):
 @hotel_connect_api.route('/hotels/reports', methods=['POST'])
 @cross_origin()
 def submit_hotel_report():
-    import services
+    import app as services
     req_data = request.json
     if not req_data:
         return jsonify({HotelField.ERROR: "Dữ liệu không hợp lệ"}), 400
@@ -292,7 +292,7 @@ def submit_hotel_report():
 @hotel_connect_api.route('/hotels/reports', methods=['GET'])
 @cross_origin()
 def get_hotel_reports():
-    import services
+    import app as services
     with reports_lock:
         reports = services.read_reports()
     
@@ -331,7 +331,7 @@ def get_hotel_reports():
 @hotel_connect_api.route('/hotels/<hotel_id>/reports', methods=['GET'])
 @cross_origin()
 def get_all_reports_for_hotel(hotel_id):
-    import services
+    import app as services
     with reports_lock:
         all_reports = services.read_reports()
     
@@ -355,7 +355,7 @@ def get_all_reports_for_hotel(hotel_id):
 @hotel_connect_api.route('/hotels/reports/<report_id>', methods=['DELETE'])
 @cross_origin()
 def delete_hotel_report(report_id):
-    import services
+    import app as services
     with reports_lock:
         reports = services.read_reports()
         new_reports = [r for r in reports if r.get(HotelField.REPORT_ID) != report_id]
@@ -368,7 +368,7 @@ def delete_hotel_report(report_id):
 @hotel_connect_api.route('/hotels/status/<status_name>', methods=['GET'])
 @cross_origin()
 def get_hotels_by_status(status_name):
-    import services
+    import app as services
     valid_statuses = [s.value for s in HotelStatus] + ["deleted"]
     if status_name not in valid_statuses:
         return jsonify({HotelField.ERROR: "Trạng thái không hợp lệ"}), 400
@@ -397,7 +397,7 @@ def get_hotels_by_status(status_name):
 @hotel_connect_api.route('/hotels/<hotel_id>/status', methods=['POST'])
 @cross_origin()
 def set_hotel_status(hotel_id):
-    import services
+    import app as services
     req_data = request.json
     new_status = req_data.get(HotelField.STATUS)
     if not new_status:
@@ -474,7 +474,7 @@ def set_hotel_status(hotel_id):
 @hotel_connect_api.route('/hotels/<hotel_id>', methods=['PUT'])
 @cross_origin()
 def update_hotel(hotel_id):
-    import services
+    import app as services
     req_data = request.json
     if not req_data:
         return jsonify({HotelField.ERROR: "Dữ liệu không hợp lệ"}), 400
@@ -524,7 +524,7 @@ def update_hotel(hotel_id):
 @hotel_connect_api.route('/hotels/<hotel_id>', methods=['DELETE'])
 @cross_origin()
 def delete_hotel(hotel_id):
-    import services
+    import app as services
     with schema_lock:
         schemas = services.read_schema()
         hotel_found = False
@@ -579,7 +579,7 @@ def delete_hotel(hotel_id):
 @hotel_connect_api.route('/config/<filename>', methods=['GET'])
 @cross_origin()
 def get_config_file(filename):
-    import services
+    import app as services
     if '.json' not in filename:
         return jsonify({HotelField.ERROR: "Chỉ hỗ trợ tải file JSON"}), 400
         

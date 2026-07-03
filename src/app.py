@@ -1,4 +1,3 @@
-
 from operator import index
 import os
 import json
@@ -6,10 +5,9 @@ from json_utils import read_json_file, write_json_file
 from hotel_schema_service import read_schema, write_schema, create_schema_item, update_schema_item, delete_schema_item
 import logging
 import sys
-import os
 import threading
 from flask import Flask, render_template, jsonify, request, abort, send_from_directory
-from flask_cors import cross_origin  # Import đúng tên thư viện
+from flask_cors import cross_origin
 import uuid
 from math import radians, sin, cos, sqrt, atan2
 from geo_utils import haversine
@@ -25,16 +23,10 @@ sys.stdout.reconfigure(line_buffering=True)
 
 app = Flask(__name__, template_folder='/app')
 
-
 # Đảm bảo đường dẫn này đúng với cấu trúc thư mục của bạn
 template_dir = "/app/"
 template_dir_base = "./"
 os.makedirs(CONFIG_DIR, exist_ok=True)
-
-
-
-## All constants are now imported from hotel_constants.py
-
 
 # --- API Quản lý hotel_schema.json ---
 # Import and register the RESTful blueprint
@@ -82,7 +74,6 @@ def hotel_connect_resource_sub(page_name=None):
         return render_template("index.html")
 
     # Đường dẫn gốc tới thư mục hotel_connect
-    # Đảm bảo template_dir của bạn trỏ đúng vào thư mục templates
     directory = os.path.join(template_dir, "")
 
     try:
@@ -91,8 +82,6 @@ def hotel_connect_resource_sub(page_name=None):
 
         # Kiểm tra xem page_name có kết thúc bằng đuôi file tĩnh không
         if any(page_name.endswith(ext) for ext in static_extensions):
-            # page_name lúc này sẽ là "js/components/Icon.js" (nhờ có <path:>)
-            # send_from_directory sẽ tìm đúng file trong sub-folder
             return send_from_directory(directory, page_name)
 
         # 3. Xử lý các route điều hướng (không có dấu chấm - giả định là page .html)
@@ -105,10 +94,6 @@ def hotel_connect_resource_sub(page_name=None):
     except Exception as e:
         print(f"Lỗi truy cập file: {page_name} - Error: {e}")
         abort(404)
-
-
-   
-
 
 if __name__ == "__main__":
     # Tắt debug để tránh Werkzeug Reloader quét file liên tục gây tràn RAM

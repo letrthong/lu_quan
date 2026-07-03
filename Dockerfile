@@ -38,4 +38,4 @@ RUN chmod 777 -R /app/data
 
 EXPOSE 5000
 
-CMD ["python", "/app/src/services.py"]
+CMD ["python", "/app/src/app.py"]
