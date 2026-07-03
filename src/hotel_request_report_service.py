@@ -1,9 +1,12 @@
 import os
 import json
+import sys
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from datetime import datetime
-from .json_utils import read_json_file, write_json_file
-from .hotel_constants import HotelField, HotelStatus, HOTEL_CONFIG_DIR, HOTEL_REQUESTS_FILE, HOTEL_REPORTS_FILE
+from json_utils import read_json_file, write_json_file
+from hotel_constants import HotelField, HotelStatus, HOTEL_CONFIG_DIR, HOTEL_REQUESTS_FILE, HOTEL_REPORTS_FILE
 
 HOTEL_REQUESTS_FILE_PATH = os.path.join(HOTEL_CONFIG_DIR, HOTEL_REQUESTS_FILE)
 HOTEL_REPORTS_FILE_PATH = os.path.join(HOTEL_CONFIG_DIR, HOTEL_REPORTS_FILE)
