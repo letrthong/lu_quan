@@ -2,11 +2,11 @@ import os
 import json
 
 from datetime import datetime
-from json_utils import read_json_file, write_json_file
-from hotel_constants import HotelField, HotelStatus, CONFIG_DIR, HOTEL_REQUESTS_FILE, HOTEL_REPORTS_FILE
+from .json_utils import read_json_file, write_json_file
+from .hotel_constants import HotelField, HotelStatus, HOTEL_CONFIG_DIR, HOTEL_REQUESTS_FILE, HOTEL_REPORTS_FILE
 
-HOTEL_REQUESTS_FILE_PATH = os.path.join(CONFIG_DIR, HOTEL_REQUESTS_FILE)
-HOTEL_REPORTS_FILE_PATH = os.path.join(CONFIG_DIR, HOTEL_REPORTS_FILE)
+HOTEL_REQUESTS_FILE_PATH = os.path.join(HOTEL_CONFIG_DIR, HOTEL_REQUESTS_FILE)
+HOTEL_REPORTS_FILE_PATH = os.path.join(HOTEL_CONFIG_DIR, HOTEL_REPORTS_FILE)
 
 def read_requests():
     return read_json_file(HOTEL_REQUESTS_FILE_PATH)

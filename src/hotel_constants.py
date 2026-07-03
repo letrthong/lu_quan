@@ -7,7 +7,7 @@ Centralized constants for hotel_connect project.
 
 
 # --- Config directory and file paths (imported from hotel_config) ---
-from hotel_config import CONFIG_DIR, HOTEL_SCHEMA_FILE_PATH, HOTEL_REQUESTS_FILE, HOTEL_REPORTS_FILE
+from .hotel_config import HOTEL_CONFIG_DIR, HOTEL_SCHEMA_FILE_PATH, HOTEL_REQUESTS_FILE, HOTEL_REPORTS_FILE
 # hotel_constants.py
 
 # --- Field name constants ---

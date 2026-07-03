@@ -7,11 +7,10 @@ ROOT_DIR = Path(__file__).resolve().parent.parent
 # Source directory
 SRC_DIR = ROOT_DIR / 'src'
 
-# Root Database / Config directory (can be overridden by environment variable)
-CONFIG_DIR = Path(os.environ.get('CONFIG_DIR', ROOT_DIR / 'config' / 'hotel_connect'))
+ 
+HOTEL_CONFIG_DIR = "/app/config/hotel_connect"
+HOTEL_SCHEMA_FILE_PATH = f"{HOTEL_CONFIG_DIR}/hotel_schema.json"
 
-# Schema file path
-HOTEL_SCHEMA_FILE_PATH = CONFIG_DIR / 'hotel_schema.json'
 
 # Data file names
 HOTEL_REQUESTS_FILE = "hotel_requests.json"

@@ -5,10 +5,12 @@ import logging
 import threading
 from datetime import datetime, timezone
 from flask import Blueprint, jsonify, request, send_from_directory
-from flask_cors import cross_origin
+ 
 
-from hotel_constants import CONFIG_DIR, HotelField, HotelStatus
-from geo_utils import haversine
+from .hotel_constants import HOTEL_CONFIG_DIR, HotelField, HotelStatus
+from .geo_utils import haversine
+from . import hotel_schema_service as schema_svc
+from . import hotel_helpers as helpers
 
 hotel_connect_api = Blueprint('hotel_connect_api', __name__, url_prefix='/api/hotelconnect/v1')
 
@@ -20,40 +22,34 @@ history_lock = threading.Lock()
 
 
 @hotel_connect_api.route('/schema', methods=['GET'])
-@cross_origin()
 def get_schema():
-    import app as services
     with schema_lock:
-        data = services.read_schema()
+        data = schema_svc.read_schema()
     return jsonify(data)
 
 @hotel_connect_api.route('/schema', methods=['POST'])
-@cross_origin()
 def add_schema():
-    import app as services
     req_data = request.json
     if not req_data:
         return jsonify({HotelField.ERROR: "Dữ liệu không hợp lệ"}), 400
     try:
-        new_item = services.create_schema_item(req_data)
+        new_item = schema_svc.create_schema_item(req_data)
     except Exception as e:
         return jsonify({HotelField.ERROR: str(e)}), 400
     with schema_lock:
-        data = services.read_schema()
+        data = schema_svc.read_schema()
         data.append(new_item)
         data.sort(key=lambda x: str(x.get(HotelField.LOCATION, '')).lower())
-        services.write_schema(data)
+        schema_svc.write_schema(data)
     return jsonify({HotelField.MESSAGE: "Thêm mới thành công", HotelField.DATA: new_item}), 201
 
 @hotel_connect_api.route('/schema/<item_id>', methods=['PUT'])
-@cross_origin()
 def update_schema(item_id):
-    import app as services
     req_data = request.json
     if not req_data:
         return jsonify({HotelField.ERROR: "Dữ liệu không hợp lệ"}), 400
     with schema_lock:
-        data = services.read_schema()
+        data = schema_svc.read_schema()
         for item in data:
             if item.get("id") == item_id:
                 current_radius = float(item.get("radius", 10))
@@ -62,29 +58,25 @@ def update_schema(item_id):
                     return jsonify({HotelField.ERROR: "Không thể giảm bán kính nhỏ hơn mức hiện tại"}), 400
                 
                 try:
-                    updated = services.update_schema_item(item, req_data)
+                    updated = schema_svc.update_schema_item(item, req_data)
                 except Exception as e:
                     return jsonify({HotelField.ERROR: str(e)}), 400
-                services.write_schema(data)
+                schema_svc.write_schema(data)
                 return jsonify({HotelField.MESSAGE: "Cập nhật thành công", HotelField.DATA: updated}), 200
     return jsonify({HotelField.ERROR: "Không tìm thấy item"}), 404
 
 @hotel_connect_api.route('/schema/<item_id>', methods=['DELETE'])
-@cross_origin()
 def delete_schema(item_id):
-    import app as services
     with schema_lock:
-        data = services.read_schema()
-        new_data = services.delete_schema_item(data, item_id)
+        data = schema_svc.read_schema()
+        new_data = schema_svc.delete_schema_item(data, item_id)
         if len(data) == len(new_data):
             return jsonify({HotelField.ERROR: "Không tìm thấy item"}), 404
-        services.write_schema(new_data)
+        schema_svc.write_schema(new_data)
         return jsonify({HotelField.MESSAGE: "Xóa thành công"}), 200
 
 @hotel_connect_api.route('/hotels/request', methods=['POST'])
-@cross_origin()
 def submit_hotel_request():
-    import app as services
     req_data = request.json
     if not req_data:
         return jsonify({HotelField.ERROR: "Dữ liệu không hợp lệ"}), 400
@@ -93,12 +85,12 @@ def submit_hotel_request():
     hotel_lng = req_data.get(HotelField.LNG)
     location_id = req_data.get(HotelField.LOCATION_ID)
 
-    valid, error = services.validate_hotel_request(req_data)
+    valid, error = helpers.validate_hotel_request(req_data)
     if not valid:
         return jsonify({HotelField.ERROR: error}), 400
 
     with schema_lock:
-        schemas = services.read_schema()
+        schemas = schema_svc.read_schema()
     area_center = next((s for s in schemas if s.get("id") == location_id), None)
 
     if not area_center or HotelField.LAT not in area_center or HotelField.LNG not in area_center:
@@ -116,25 +108,21 @@ def submit_hotel_request():
         return jsonify({HotelField.ERROR: error_message}), 400
 
     with requests_lock:
-        data = services.read_requests()
+        data = helpers.read_requests()
         data.append(req_data)
-        services.write_requests(data)
+        helpers.write_requests(data)
     return jsonify({HotelField.SUCCESS: True, HotelField.MESSAGE: "Gửi yêu cầu đăng ký thành công", HotelField.DATA: req_data}), 201
 
 @hotel_connect_api.route('/hotels/request', methods=['GET'])
-@cross_origin()
 def get_hotel_requests():
-    import app as services
     with requests_lock:
-        data = services.read_requests()
+        data = helpers.read_requests()
     return jsonify(data)
 
 @hotel_connect_api.route('/requests/<request_id>/approve', methods=['POST'])
-@cross_origin()
 def approve_hotel_request(request_id):
-    import app as services
     with requests_lock:
-        all_requests = services.read_requests()
+        all_requests = helpers.read_requests()
         hotel_to_approve = None
         other_requests = []
         for req in all_requests:
@@ -150,14 +138,14 @@ def approve_hotel_request(request_id):
         if not location_id:
             return jsonify({HotelField.ERROR: f"Yêu cầu thiếu thông tin {HotelField.LOCATION_ID}"}), 400
 
-        schemas = services.read_schema()
+        schemas = schema_svc.read_schema()
         target_schema = next((s for s in schemas if s.get("id") == location_id), None)
-        target_file = services.get_hotel_file_path(target_schema.get(HotelField.LOCATION), schemas) if target_schema else None
+        target_file = helpers.get_hotel_file_path(target_schema.get(HotelField.LOCATION), schemas) if target_schema else None
 
         if not target_file:
             return jsonify({HotelField.ERROR: f"Không tìm thấy cấu hình cho khu vực ID: {location_id}"}), 400
 
-        hotel_to_approve = services.update_status(hotel_to_approve, HotelStatus.APPROVED)
+        hotel_to_approve = helpers.update_status(hotel_to_approve, HotelStatus.APPROVED)
         
         try:
             city_hotels = []
@@ -174,32 +162,28 @@ def approve_hotel_request(request_id):
             return jsonify({HotelField.ERROR: f"Lỗi khi ghi file khách sạn: {str(e)}"}), 500
 
         other_requests.sort(key=lambda x: str(x.get(HotelField.LOCATION_ID, '')))
-        services.write_requests(other_requests)
+        helpers.write_requests(other_requests)
 
     return jsonify({HotelField.SUCCESS: True, HotelField.MESSAGE: "Phê duyệt khách sạn thành công", HotelField.DATA: hotel_to_approve})
 
 @hotel_connect_api.route('/requests/<request_id>/reject', methods=['POST'])
-@cross_origin()
 def reject_hotel_request(request_id):
-    import app as services
     with requests_lock:
-        all_requests = services.read_requests()
+        all_requests = helpers.read_requests()
         remaining_requests = [req for req in all_requests if req.get('id') != request_id]
         if len(remaining_requests) == len(all_requests):
             return jsonify({HotelField.ERROR: "Không tìm thấy yêu cầu"}), 404
-        services.write_requests(remaining_requests)
+        helpers.write_requests(remaining_requests)
     return jsonify({HotelField.SUCCESS: True, HotelField.MESSAGE: "Từ chối yêu cầu thành công"})
 
 @hotel_connect_api.route('/requests/<request_id>', methods=['PUT'])
-@cross_origin()
 def update_hotel_request(request_id):
-    import app as services
     req_data = request.json
     if not req_data:
         return jsonify({HotelField.ERROR: "Dữ liệu không hợp lệ"}), 400
 
     with requests_lock:
-        all_requests = services.read_requests()
+        all_requests = helpers.read_requests()
         found = False
         updated_request = None
         for i, req in enumerate(all_requests):
@@ -213,14 +197,12 @@ def update_hotel_request(request_id):
                 break
         if not found:
             return jsonify({HotelField.ERROR: "Không tìm thấy yêu cầu"}), 404
-        services.write_requests(all_requests)
+        helpers.write_requests(all_requests)
 
     return jsonify({HotelField.SUCCESS: True, HotelField.MESSAGE: "Cập nhật yêu cầu thành công", HotelField.DATA: updated_request})
 
 @hotel_connect_api.route('/hotels/reports', methods=['POST'])
-@cross_origin()
 def submit_hotel_report():
-    import app as services
     req_data = request.json
     if not req_data:
         return jsonify({HotelField.ERROR: "Dữ liệu không hợp lệ"}), 400
@@ -243,9 +225,9 @@ def submit_hotel_report():
     
     report_count_for_hotel = 0
     with reports_lock:
-        reports = services.read_reports()
+        reports = helpers.read_reports()
         reports.append(new_report)
-        services.write_reports(reports)
+        helpers.write_reports(reports)
         report_count_for_hotel = sum(1 for r in reports if r.get(HotelField.HOTEL_ID) == hotel_id)
 
     hotel_to_update = None
@@ -253,12 +235,12 @@ def submit_hotel_report():
     city_hotels = None
 
     with schema_lock:
-        schemas = services.read_schema()
+        schemas = schema_svc.read_schema()
         for schema in schemas:
             file_path_id = schema.get(HotelField.FILE_PATH_ID)
             if not file_path_id:
                 continue
-            file_path = os.path.join(CONFIG_DIR, file_path_id)
+            file_path = os.path.join(HOTEL_CONFIG_DIR, file_path_id)
             if os.path.exists(file_path):
                 try:
                     with open(file_path, 'r', encoding='utf-8') as f:
@@ -290,11 +272,9 @@ def submit_hotel_report():
     return jsonify({HotelField.SUCCESS: True, HotelField.MESSAGE: "Gửi báo cáo lỗi thành công", HotelField.DATA: new_report}), 201
 
 @hotel_connect_api.route('/hotels/reports', methods=['GET'])
-@cross_origin()
 def get_hotel_reports():
-    import app as services
     with reports_lock:
-        reports = services.read_reports()
+        reports = helpers.read_reports()
     
     grouped_by_hotel = {}
     for report in reports:
@@ -317,7 +297,7 @@ def get_hotel_reports():
 
     with schema_lock:
         for report in unique_reports:
-            details = services._find_hotel_details_by_id(report.get(HotelField.HOTEL_ID))
+            details = helpers._find_hotel_details_by_id(report.get(HotelField.HOTEL_ID))
             if details:
                 report[HotelField.HOTEL_NAME] = details['name']
                 report[HotelField.LOCATION] = details.get(HotelField.LOCATION, "Không rõ")
@@ -329,11 +309,9 @@ def get_hotel_reports():
     return jsonify(unique_reports)
 
 @hotel_connect_api.route('/hotels/<hotel_id>/reports', methods=['GET'])
-@cross_origin()
 def get_all_reports_for_hotel(hotel_id):
-    import app as services
     with reports_lock:
-        all_reports = services.read_reports()
+        all_reports = helpers.read_reports()
     
     hotel_reports = [r for r in all_reports if r.get(HotelField.HOTEL_ID) == hotel_id]
     
@@ -341,7 +319,7 @@ def get_all_reports_for_hotel(hotel_id):
         return jsonify([])
 
     with schema_lock:
-        details = services._find_hotel_details_by_id(hotel_id)
+        details = helpers._find_hotel_details_by_id(hotel_id)
         hotel_name = "Không tìm thấy"
         if details:
             hotel_name = details.get('name', "Không tìm thấy")
@@ -353,34 +331,30 @@ def get_all_reports_for_hotel(hotel_id):
     return jsonify(hotel_reports)
 
 @hotel_connect_api.route('/hotels/reports/<report_id>', methods=['DELETE'])
-@cross_origin()
 def delete_hotel_report(report_id):
-    import app as services
     with reports_lock:
-        reports = services.read_reports()
+        reports = helpers.read_reports()
         new_reports = [r for r in reports if r.get(HotelField.REPORT_ID) != report_id]
         if len(reports) == len(new_reports):
             return jsonify({HotelField.ERROR: "Không tìm thấy báo cáo"}), 404
-        services.write_reports(new_reports)
+        helpers.write_reports(new_reports)
         
     return jsonify({HotelField.SUCCESS: True, HotelField.MESSAGE: "Xóa báo cáo thành công"})
 
 @hotel_connect_api.route('/hotels/status/<status_name>', methods=['GET'])
-@cross_origin()
 def get_hotels_by_status(status_name):
-    import app as services
     valid_statuses = [s.value for s in HotelStatus] + ["deleted"]
     if status_name not in valid_statuses:
         return jsonify({HotelField.ERROR: "Trạng thái không hợp lệ"}), 400
 
     hotels_with_status = []
     with schema_lock:
-        schemas = services.read_schema()
+        schemas = schema_svc.read_schema()
         for schema in schemas:
             file_path_id = schema.get(HotelField.FILE_PATH_ID)
             if not file_path_id:
                 continue
-            file_path = os.path.join(CONFIG_DIR, file_path_id)
+            file_path = os.path.join(HOTEL_CONFIG_DIR, file_path_id)
             if os.path.exists(file_path):
                 try:
                     with open(file_path, 'r', encoding='utf-8') as f:
@@ -395,9 +369,7 @@ def get_hotels_by_status(status_name):
     return jsonify(hotels_with_status)
 
 @hotel_connect_api.route('/hotels/<hotel_id>/status', methods=['POST'])
-@cross_origin()
 def set_hotel_status(hotel_id):
-    import app as services
     req_data = request.json
     new_status = req_data.get(HotelField.STATUS)
     if not new_status:
@@ -408,14 +380,14 @@ def set_hotel_status(hotel_id):
         return jsonify({HotelField.ERROR: "Trạng thái không hợp lệ"}), 400
 
     with schema_lock:
-        schemas = services.read_schema()
+        schemas = schema_svc.read_schema()
         hotel_found, target_file, city_hotels, updated_hotel = False, None, [], None
 
         for schema in schemas:
             file_path_id = schema.get(HotelField.FILE_PATH_ID)
             if not file_path_id:
                 continue
-            file_path = os.path.join(CONFIG_DIR, file_path_id)
+            file_path = os.path.join(HOTEL_CONFIG_DIR, file_path_id)
             if os.path.exists(file_path):
                 with open(file_path, 'r', encoding='utf-8') as f:
                     hotels = json.load(f)
@@ -439,7 +411,7 @@ def set_hotel_status(hotel_id):
 
         if new_status in [HotelStatus.APPROVED.value, HotelStatus.INACTIVE.value, "deleted"]:
             with reports_lock:
-                reports = services.read_reports()
+                reports = helpers.read_reports()
                 reports_to_keep = []
                 reports_to_archive = []
                 for r in reports:
@@ -451,11 +423,11 @@ def set_hotel_status(hotel_id):
                         reports_to_keep.append(r)
                 
                 if reports_to_archive:
-                    services.write_reports(reports_to_keep)
+                    helpers.write_reports(reports_to_keep)
                     
                     with history_lock:
                         history = []
-                        history_file = os.path.join(CONFIG_DIR, f"hotel_report_{hotel_id}.json")
+                        history_file = os.path.join(HOTEL_CONFIG_DIR, f"hotel_report_{hotel_id}.json")
                         if os.path.exists(history_file):
                             try:
                                 with open(history_file, 'r', encoding='utf-8') as f:
@@ -472,15 +444,13 @@ def set_hotel_status(hotel_id):
     return jsonify({HotelField.SUCCESS: True, HotelField.MESSAGE: f"Cập nhật trạng thái thành công sang '{new_status}'", HotelField.DATA: updated_hotel})
 
 @hotel_connect_api.route('/hotels/<hotel_id>', methods=['PUT'])
-@cross_origin()
 def update_hotel(hotel_id):
-    import app as services
     req_data = request.json
     if not req_data:
         return jsonify({HotelField.ERROR: "Dữ liệu không hợp lệ"}), 400
 
     with schema_lock:
-        schemas = services.read_schema()
+        schemas = schema_svc.read_schema()
         hotel_found = False
         target_file = None
         city_hotels = []
@@ -489,7 +459,7 @@ def update_hotel(hotel_id):
             file_path_id = schema.get(HotelField.FILE_PATH_ID)
             if not file_path_id:
                 continue
-            file_path = os.path.join(CONFIG_DIR, file_path_id)
+            file_path = os.path.join(HOTEL_CONFIG_DIR, file_path_id)
             if os.path.exists(file_path):
                 with open(file_path, 'r', encoding='utf-8') as f:
                     try:
@@ -522,11 +492,9 @@ def update_hotel(hotel_id):
     return jsonify({HotelField.SUCCESS: True, HotelField.MESSAGE: "Cập nhật khách sạn thành công", HotelField.DATA: updated_hotel})
 
 @hotel_connect_api.route('/hotels/<hotel_id>', methods=['DELETE'])
-@cross_origin()
 def delete_hotel(hotel_id):
-    import app as services
     with schema_lock:
-        schemas = services.read_schema()
+        schemas = schema_svc.read_schema()
         hotel_found = False
         target_file = None
         city_hotels = []
@@ -535,7 +503,7 @@ def delete_hotel(hotel_id):
             file_path_id = schema.get(HotelField.FILE_PATH_ID)
             if not file_path_id:
                 continue
-            file_path = os.path.join(CONFIG_DIR, file_path_id)
+            file_path = os.path.join(HOTEL_CONFIG_DIR, file_path_id)
             if os.path.exists(file_path):
                 with open(file_path, 'r', encoding='utf-8') as f:
                     try:
@@ -562,12 +530,12 @@ def delete_hotel(hotel_id):
             return jsonify({HotelField.ERROR: f"Lỗi khi ghi file: {str(e)}"}), 500
 
         with reports_lock:
-            reports = services.read_reports()
+            reports = helpers.read_reports()
             new_reports = [r for r in reports if r.get(HotelField.HOTEL_ID) != hotel_id]
             if len(reports) != len(new_reports):
-                services.write_reports(new_reports)
+                helpers.write_reports(new_reports)
                 
-        history_file = os.path.join(CONFIG_DIR, f"hotel_report_{hotel_id}.json")
+        history_file = os.path.join(HOTEL_CONFIG_DIR, f"hotel_report_{hotel_id}.json")
         if os.path.exists(history_file):
             try:
                 os.remove(history_file)
@@ -577,13 +545,11 @@ def delete_hotel(hotel_id):
     return jsonify({HotelField.SUCCESS: True, HotelField.MESSAGE: "Xóa khách sạn thành công"})
 
 @hotel_connect_api.route('/config/<filename>', methods=['GET'])
-@cross_origin()
 def get_config_file(filename):
-    import app as services
     if '.json' not in filename:
         return jsonify({HotelField.ERROR: "Chỉ hỗ trợ tải file JSON"}), 400
         
-    directory = CONFIG_DIR
+    directory = HOTEL_CONFIG_DIR
     full_path = os.path.join(directory, filename)
     if not os.path.exists(full_path):
         logging.warning(f"File không tồn tại (404): {full_path}")
