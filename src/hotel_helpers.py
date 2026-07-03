@@ -7,10 +7,15 @@ Business logic helpers for hotel_connect Flask app.
 """
 import os
 import json
+import sys
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+
 from datetime import datetime
 from threading import Lock
-from .json_utils import read_json_file, write_json_file
-from .hotel_constants import HOTEL_CONFIG_DIR, HotelField, HotelStatus, HOTEL_REQUESTS_FILE, HOTEL_REPORTS_FILE
+from  json_utils import read_json_file, write_json_file
+from  hotel_constants import HOTEL_CONFIG_DIR, HotelField, HotelStatus, HOTEL_REQUESTS_FILE, HOTEL_REPORTS_FILE
 
 # Locks for thread safety
 schema_lock = Lock()
