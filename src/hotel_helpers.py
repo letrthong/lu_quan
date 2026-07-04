@@ -79,9 +79,12 @@ def update_status(hotel, status: HotelStatus):
     return hotel
 
 def _find_hotel_details_by_id(hotel_id):
-    """Find hotel details by ID across all hotel files."""
-    from .hotel_schema_service import read_schema
-    schemas = read_schema()
+    """
+    Find hotel details by ID across all hotel files.
+    Returns dict with 'name' and 'locationName' keys, or None if not found.
+    """
+    import hotel_schema_service as schema_svc
+    schemas = schema_svc.read_schema()
     for schema in schemas:
         file_path_id = schema.get(HotelField.FILE_PATH_ID)
         if not file_path_id:
@@ -93,8 +96,10 @@ def _find_hotel_details_by_id(hotel_id):
                     hotels = json.load(f)
                 for hotel in hotels:
                     if hotel.get(HotelField.ID) == hotel_id:
-                        hotel[HotelField.LOCATION] = schema.get(HotelField.LOCATION, "Không rõ")
-                        return hotel
+                        return {
+                            'name': hotel.get('name', 'N/A'),
+                            HotelField.LOCATION: schema.get(HotelField.LOCATION, 'Không rõ')
+                        }
             except Exception:
                 pass
     return None

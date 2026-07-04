@@ -51,6 +51,36 @@ const HotelAPI = {
         const hotelArrays = await Promise.all(fetchPromises);
         return hotelArrays.flat();
     },
+
+    /**
+     * Lấy danh sách hotels theo locationIds (BULK API - nhanh hơn)
+     * Gọi 1 request duy nhất thay vì nhiều requests song song
+     * @param {string[]} locationIds - Mảng các locationId hoặc ['all'] để lấy tất cả
+     * @returns {Promise<Array>} - Danh sách hotels
+     */
+    fetchHotelsBulk: async (locationIds = []) => {
+        if (!locationIds || locationIds.length === 0) {
+            return [];
+        }
+        
+        try {
+            const idsParam = locationIds.includes('all') ? 'all' : locationIds.join(',');
+            const response = await fetch(
+                `${HotelAPI.baseUrl}/api/hotelconnect/v1/hotels/bulk?locationIds=${encodeURIComponent(idsParam)}`
+            );
+            
+            if (!response.ok) {
+                console.error(`Lỗi ${response.status} khi tải bulk hotels`);
+                return [];
+            }
+            
+            const result = await response.json();
+            return result.data || [];
+        } catch (err) {
+            console.error('Lỗi mạng khi tải bulk hotels:', err);
+            return [];
+        }
+    },
     
     // Gửi yêu cầu đăng ký khách sạn mới
     submitHotelRequest: async (newRequestData) => {

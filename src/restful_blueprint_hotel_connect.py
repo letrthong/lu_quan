@@ -12,7 +12,7 @@ from datetime import datetime, timezone
 from flask import Blueprint, jsonify, request, send_from_directory
  
 
-from  hotel_constants import HOTEL_CONFIG_DIR, HotelField, HotelStatus
+from  hotel_constants import HOTEL_CONFIG_DIR, HotelField, HotelStatus, CACHE_VERSION_FILE
 from  geo_utils import haversine
 import hotel_schema_service as schema_svc
 import hotel_helpers as helpers
@@ -163,12 +163,21 @@ def approve_hotel_request(request_id):
             
             with open(target_file, 'w', encoding='utf-8') as f:
                 json.dump(city_hotels, f, ensure_ascii=False, indent=4)
+                
+            # Thêm hotel vào geohash index để nearby search hoạt động ngay
+            try:
+                from geo_utils import add_hotel_to_index
+                add_hotel_to_index(hotel_to_approve)
+            except Exception as idx_err:
+                logging.warning(f"Không thể cập nhật geohash index: {idx_err}")
+                
         except Exception as e:
             return jsonify({HotelField.ERROR: f"Lỗi khi ghi file khách sạn: {str(e)}"}), 500
 
         other_requests.sort(key=lambda x: str(x.get(HotelField.LOCATION_ID, '')))
         helpers.write_requests(other_requests)
 
+    invalidate_hotels_cache()  # Xóa cache để frontend load dữ liệu mới
     return jsonify({HotelField.SUCCESS: True, HotelField.MESSAGE: "Phê duyệt khách sạn thành công", HotelField.DATA: hotel_to_approve})
 
 @hotel_connect_api.route('/requests/<request_id>/reject', methods=['POST'])
@@ -413,6 +422,18 @@ def set_hotel_status(hotel_id):
                 json.dump(city_hotels, f, ensure_ascii=False, indent=4)
         except Exception as e:
             return jsonify({HotelField.ERROR: f"Lỗi khi ghi file: {str(e)}"}), 500
+        
+        # Cập nhật geohash index theo status mới
+        try:
+            from geo_utils import add_hotel_to_index, remove_hotel_from_index
+            if new_status == HotelStatus.APPROVED.value:
+                # Hotel được khôi phục, thêm lại vào index
+                add_hotel_to_index(updated_hotel)
+            elif new_status in [HotelStatus.INACTIVE.value, "deleted"]:
+                # Hotel bị ẩn hoặc xóa, bỏ khỏi index
+                remove_hotel_from_index(hotel_id)
+        except Exception as idx_err:
+            logging.warning(f"Không thể cập nhật geohash index khi đổi status: {idx_err}")
 
         if new_status in [HotelStatus.APPROVED.value, HotelStatus.INACTIVE.value, "deleted"]:
             with reports_lock:
@@ -446,6 +467,7 @@ def set_hotel_status(hotel_id):
                         except Exception as e:
                             logging.error(f"Failed to write history: {e}")
 
+    invalidate_hotels_cache()  # Xóa cache để frontend load dữ liệu mới
     return jsonify({HotelField.SUCCESS: True, HotelField.MESSAGE: f"Cập nhật trạng thái thành công sang '{new_status}'", HotelField.DATA: updated_hotel})
 
 @hotel_connect_api.route('/hotels/<hotel_id>', methods=['PUT'])
@@ -494,6 +516,7 @@ def update_hotel(hotel_id):
         except Exception as e:
             return jsonify({HotelField.ERROR: f"Lỗi khi ghi file: {str(e)}"}), 500
 
+    invalidate_hotels_cache()  # Xóa cache để frontend load dữ liệu mới
     return jsonify({HotelField.SUCCESS: True, HotelField.MESSAGE: "Cập nhật khách sạn thành công", HotelField.DATA: updated_hotel})
 
 @hotel_connect_api.route('/hotels/<hotel_id>', methods=['DELETE'])
@@ -531,6 +554,14 @@ def delete_hotel(hotel_id):
         try:
             with open(target_file, 'w', encoding='utf-8') as f:
                 json.dump(city_hotels, f, ensure_ascii=False, indent=4)
+                
+            # Xóa hotel khỏi geohash index
+            try:
+                from geo_utils import remove_hotel_from_index
+                remove_hotel_from_index(hotel_id)
+            except Exception as idx_err:
+                logging.warning(f"Không thể cập nhật geohash index khi xóa: {idx_err}")
+                
         except Exception as e:
             return jsonify({HotelField.ERROR: f"Lỗi khi ghi file: {str(e)}"}), 500
 
@@ -547,7 +578,204 @@ def delete_hotel(hotel_id):
             except Exception as e:
                 logging.error(f"Lỗi khi xóa file lịch sử {history_file}: {e}")
 
+    invalidate_hotels_cache()  # Xóa cache để frontend load dữ liệu mới
     return jsonify({HotelField.SUCCESS: True, HotelField.MESSAGE: "Xóa khách sạn thành công"})
+
+
+# ============== BULK LOAD API với Memory Cache ==============
+import time
+
+# Memory cache cho hotels data
+_hotels_cache = {
+    'data': {},           # locationId -> [hotels]
+    'all_hotels': [],     # Tất cả hotels (flat list)
+    'timestamp': 0,       # Thời điểm cache được build
+    'data_version': 0,    # Version của data khi build cache
+    'ttl': 300            # Cache expire sau 5 phút
+}
+_cache_lock = threading.Lock()
+
+
+def _read_data_version():
+    """Đọc version hiện tại của data từ file config"""
+    try:
+        if os.path.exists(CACHE_VERSION_FILE):
+            with open(CACHE_VERSION_FILE, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+                return data.get('version', 0)
+    except Exception as e:
+        logging.warning(f"Không thể đọc cache version file: {e}")
+    return 0
+
+
+def _update_data_version():
+    """
+    Cập nhật version khi có thay đổi data.
+    Gọi hàm này sau mỗi thao tác: approve, update, delete hotel.
+    Tất cả instance sẽ thấy version mới khi check.
+    """
+    try:
+        new_version = int(time.time() * 1000)  # milliseconds timestamp
+        version_data = {
+            'version': new_version,
+            'updated_at': datetime.now().isoformat(),
+            'updated_by': f"instance_{os.getpid()}"
+        }
+        with open(CACHE_VERSION_FILE, 'w', encoding='utf-8') as f:
+            json.dump(version_data, f, ensure_ascii=False, indent=2)
+        logging.info(f"Data version updated: {new_version}")
+        return new_version
+    except Exception as e:
+        logging.error(f"Không thể cập nhật cache version file: {e}")
+        return 0
+
+
+def _is_cache_valid():
+    """
+    Kiểm tra cache còn hợp lệ không.
+    Cache invalid khi:
+    1. Đã quá TTL (5 phút)
+    2. Data version trong file khác với version trong cache (instance khác đã thay đổi data)
+    """
+    # Check TTL trước (nhanh)
+    if time.time() - _hotels_cache['timestamp'] >= _hotels_cache['ttl']:
+        return False
+    
+    # Check data version từ file config (rất nhanh - chỉ đọc 1 file nhỏ)
+    current_version = _read_data_version()
+    if current_version > _hotels_cache.get('data_version', 0):
+        logging.info(f"Phát hiện data version mới: {current_version} > {_hotels_cache.get('data_version', 0)}")
+        return False
+    
+    return True
+
+
+def _build_hotels_cache():
+    """Build cache từ tất cả file hotels"""
+    cache_data = {}
+    all_hotels = []
+    
+    # Đọc data version hiện tại
+    current_version = _read_data_version()
+    
+    schemas = schema_svc.read_schema()
+    for schema in schemas:
+        location_id = schema.get('id')
+        file_path_id = schema.get(HotelField.FILE_PATH_ID)
+        if not file_path_id or not location_id:
+            continue
+            
+        file_path = os.path.join(HOTEL_CONFIG_DIR, file_path_id)
+        if os.path.exists(file_path):
+            try:
+                with open(file_path, 'r', encoding='utf-8') as f:
+                    hotels = json.load(f)
+                    cache_data[location_id] = hotels
+                    all_hotels.extend(hotels)
+            except Exception as e:
+                logging.error(f"Lỗi khi đọc file {file_path}: {e}")
+                cache_data[location_id] = []
+    
+    with _cache_lock:
+        _hotels_cache['data'] = cache_data
+        _hotels_cache['all_hotels'] = all_hotels
+        _hotels_cache['data_version'] = current_version
+        _hotels_cache['timestamp'] = time.time()
+    
+    logging.info(f"Đã build hotels cache: {len(cache_data)} khu vực, {len(all_hotels)} hotels, version={current_version}")
+    return cache_data, all_hotels
+
+
+def _get_cached_hotels(location_ids=None):
+    """
+    Lấy hotels từ cache (build cache nếu cần).
+    location_ids: list các locationId cần lấy, None = lấy tất cả
+    """
+    if not _is_cache_valid():
+        _build_hotels_cache()
+    
+    with _cache_lock:
+        if location_ids is None or 'all' in location_ids:
+            return _hotels_cache['all_hotels']
+        
+        result = []
+        for loc_id in location_ids:
+            result.extend(_hotels_cache['data'].get(loc_id, []))
+        return result
+
+
+def invalidate_hotels_cache():
+    """
+    Xóa cache và cập nhật data version.
+    Gọi hàm này sau mỗi thao tác thay đổi data: approve, update, delete hotel.
+    Instance khác sẽ thấy version mới và tự rebuild cache.
+    """
+    global _geohash_index_timestamp, _geohash_index_data_version
+    
+    # Cập nhật data version trong file config - tất cả instance sẽ thấy
+    _update_data_version()
+    
+    # Reset local cache
+    with _cache_lock:
+        _hotels_cache['timestamp'] = 0
+        _hotels_cache['data_version'] = 0
+    
+    # Reset geohash index để force rebuild
+    _geohash_index_timestamp = 0
+    _geohash_index_data_version = 0
+    logging.info("Hotels cache và geohash index đã được invalidate, data version đã được cập nhật")
+
+
+# Variables để track geohash index (khai báo ở đây để invalidate_hotels_cache có thể access)
+_geohash_index_timestamp = 0
+_geohash_index_data_version = 0
+
+
+@hotel_connect_api.route('/hotels/bulk', methods=['GET'])
+def get_hotels_bulk():
+    """
+    API load nhiều khu vực hotels trong 1 request.
+    
+    Query params:
+    - locationIds: Danh sách locationId cách nhau bởi dấu phẩy (vd: "id1,id2,id3")
+                   Hoặc "all" để lấy tất cả
+    
+    Response: Danh sách tất cả hotels từ các khu vực được chọn
+    """
+    location_ids_param = request.args.get('locationIds', '')
+    
+    if not location_ids_param:
+        return jsonify({HotelField.ERROR: "Thiếu tham số locationIds"}), 400
+    
+    # Parse locationIds
+    if location_ids_param.lower() == 'all':
+        location_ids = ['all']
+    else:
+        location_ids = [loc_id.strip() for loc_id in location_ids_param.split(',') if loc_id.strip()]
+    
+    if not location_ids:
+        return jsonify({HotelField.ERROR: "locationIds không hợp lệ"}), 400
+    
+    try:
+        hotels = _get_cached_hotels(location_ids)
+        
+        return jsonify({
+            HotelField.SUCCESS: True,
+            'count': len(hotels),
+            'locationIds': location_ids,
+            HotelField.DATA: hotels
+        })
+    except Exception as e:
+        logging.error(f"Lỗi khi load bulk hotels: {e}")
+        return jsonify({HotelField.ERROR: "Lỗi server"}), 500
+
+
+@hotel_connect_api.route('/hotels/cache/invalidate', methods=['POST'])
+def invalidate_cache_endpoint():
+    """API admin: Xóa cache để force reload từ file"""
+    invalidate_hotels_cache()
+    return jsonify({HotelField.SUCCESS: True, HotelField.MESSAGE: "Cache đã được xóa"})
+
 
 @hotel_connect_api.route('/config/<filename>', methods=['GET'])
 def get_config_file(filename):
@@ -561,3 +789,159 @@ def get_config_file(filename):
         return jsonify([]), 404
         
     return send_from_directory(directory, filename)
+
+
+# ============== NEARBY API với Geohash Index ==============
+from geo_utils import (
+    find_nearby_fast, 
+    build_geohash_index, 
+    add_hotel_to_index, 
+    remove_hotel_from_index,
+    get_index_stats
+)
+
+def _load_all_hotels_for_index():
+    """Load tất cả hotels từ các file để build index"""
+    # Tận dụng cache nếu có
+    if _is_cache_valid():
+        with _cache_lock:
+            return _hotels_cache['all_hotels']
+    
+    all_hotels = []
+    schemas = schema_svc.read_schema()
+    for schema in schemas:
+        file_path_id = schema.get(HotelField.FILE_PATH_ID)
+        if not file_path_id:
+            continue
+        file_path = os.path.join(HOTEL_CONFIG_DIR, file_path_id)
+        if os.path.exists(file_path):
+            try:
+                with open(file_path, 'r', encoding='utf-8') as f:
+                    hotels = json.load(f)
+                    all_hotels.extend(hotels)
+            except Exception as e:
+                logging.error(f"Lỗi khi đọc file {file_path} cho index: {e}")
+    return all_hotels
+
+
+def rebuild_geohash_index():
+    """Rebuild toàn bộ geohash index từ dữ liệu hiện tại"""
+    global _geohash_index_data_version
+    hotels = _load_all_hotels_for_index()
+    count = build_geohash_index(hotels)
+    _geohash_index_data_version = _read_data_version()
+    logging.info(f"Đã rebuild geohash index: {count} cells, {len(hotels)} hotels, version={_geohash_index_data_version}")
+    return count
+
+
+def _ensure_geohash_index_fresh():
+    """
+    Đảm bảo geohash index được cập nhật nếu có thay đổi data từ instance khác.
+    Gọi trước mỗi nearby query.
+    """
+    global _geohash_index_timestamp, _geohash_index_data_version
+    
+    # Nếu chưa build lần nào, build ngay
+    if _geohash_index_timestamp == 0:
+        rebuild_geohash_index()
+        _geohash_index_timestamp = time.time()
+        return
+    
+    # Kiểm tra data version từ file config
+    current_version = _read_data_version()
+    if current_version > _geohash_index_data_version:
+        logging.info(f"Phát hiện data version mới cho geohash: {current_version} > {_geohash_index_data_version}")
+        rebuild_geohash_index()
+        _geohash_index_timestamp = time.time()
+
+
+@hotel_connect_api.route('/nearby', methods=['GET'])
+def get_nearby_hotels():
+    """
+    API tìm hotels gần vị trí cho trước.
+    
+    Query params:
+    - lat: Vĩ độ (bắt buộc)
+    - lng: Kinh độ (bắt buộc)
+    - radius: Bán kính tìm kiếm tính bằng km (mặc định 5km, tối đa 50km)
+    - limit: Số lượng kết quả tối đa (mặc định 50)
+    
+    Response: Danh sách hotels với field 'distance' (km) được thêm vào.
+    """
+    try:
+        lat = request.args.get('lat', type=float)
+        lng = request.args.get('lng', type=float)
+        radius = request.args.get('radius', default=5.0, type=float)
+        limit = request.args.get('limit', default=50, type=int)
+        
+        if lat is None or lng is None:
+            return jsonify({HotelField.ERROR: "Thiếu tham số lat hoặc lng"}), 400
+        
+        # Giới hạn bán kính tối đa 50km để tránh quá tải
+        radius = min(radius, 50.0)
+        limit = min(limit, 200)
+        
+        # Đảm bảo index được cập nhật nếu có thay đổi từ instance khác
+        _ensure_geohash_index_fresh()
+        
+        results = find_nearby_fast(lat, lng, radius)
+        
+        # Giới hạn số lượng kết quả
+        results = results[:limit]
+        
+        return jsonify({
+            HotelField.SUCCESS: True,
+            'count': len(results),
+            'radius_km': radius,
+            'center': {'lat': lat, 'lng': lng},
+            HotelField.DATA: results
+        })
+        
+    except Exception as e:
+        logging.error(f"Lỗi khi tìm nearby hotels: {e}")
+        return jsonify({HotelField.ERROR: "Lỗi server khi tìm kiếm"}), 500
+
+
+@hotel_connect_api.route('/nearby/stats', methods=['GET'])
+def get_nearby_stats():
+    """API debug: Xem thống kê geohash index"""
+    stats = get_index_stats()
+    return jsonify(stats)
+
+
+@hotel_connect_api.route('/nearby/rebuild', methods=['POST'])
+def rebuild_index_endpoint():
+    """API admin: Rebuild lại geohash index"""
+    try:
+        count = rebuild_geohash_index()
+        return jsonify({
+            HotelField.SUCCESS: True,
+            HotelField.MESSAGE: f"Đã rebuild index thành công",
+            'cells_count': count
+        })
+    except Exception as e:
+        logging.error(f"Lỗi khi rebuild index: {e}")
+        return jsonify({HotelField.ERROR: str(e)}), 500
+
+
+# Khởi tạo cache và index khi module được load
+def init_geohash_index():
+    """
+    Gọi hàm này khi server khởi động để:
+    1. Warm up hotels cache (load tất cả hotels vào memory)
+    2. Build geohash index cho nearby search
+    
+    Sau khi init, các request đầu tiên sẽ được trả về ngay từ cache.
+    """
+    try:
+        # 1. Warm up hotels cache trước
+        logging.info("Đang warm up hotels cache...")
+        _build_hotels_cache()
+        
+        # 2. Build geohash index (sẽ dùng cache vừa build)
+        logging.info("Đang build geohash index...")
+        rebuild_geohash_index()
+        
+        logging.info("Server đã sẵn sàng - cache và index đã được load")
+    except Exception as e:
+        logging.error(f"Lỗi khi khởi tạo: {e}")

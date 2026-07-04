@@ -98,8 +98,8 @@ class HotelConnectApiTestCase(unittest.TestCase):
         self.assertIn("error", response.json)
 
     # --- REPORT API (GET only, POST cần bổ sung nếu có route) ---
-    @patch('app.read_reports', return_value=[{"hotelId": "h1", "reportedAt": "2024-01-01T00:00:00Z"}])
-    @patch('app._find_hotel_details_by_id', return_value={"name": "Hotel1", "locationName": "Test City"})
+    @patch('hotel_helpers.read_reports', return_value=[{"hotelId": "h1", "reportedAt": "2024-01-01T00:00:00Z"}])
+    @patch('hotel_helpers._find_hotel_details_by_id', return_value={"name": "Hotel1", "locationName": "Test City"})
     def test_get_hotel_reports(self, mock_find, mock_read):
         response = self.app.get('/api/hotelconnect/v1/hotels/reports')
         self.assertEqual(response.status_code, 200)

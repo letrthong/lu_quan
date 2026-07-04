@@ -33,27 +33,6 @@ os.makedirs(CONFIG_DIR, exist_ok=True)
 from restful_blueprint_hotel_connect import hotel_connect_api
 app.register_blueprint(hotel_connect_api)
 
-def _find_hotel_details_by_id(hotel_id):
-    """Helper to find hotel details (name, locationName) across all hotel files."""
-    schemas = read_schema()
-    for schema in schemas:
-        file_path_id = schema.get(HotelField.FILE_PATH_ID)
-        if not file_path_id:
-            continue
-        file_path = os.path.join(CONFIG_DIR, file_path_id)
-        if os.path.exists(file_path):
-            try:
-                with open(file_path, 'r', encoding='utf-8') as f:
-                    hotels_in_file = json.load(f)
-                    for hotel in hotels_in_file:
-                        if hotel.get(HotelField.ID) == hotel_id:
-                            return {
-                                "name": hotel.get("name", 'N/A'),
-                                HotelField.LOCATION: hotel.get(HotelField.LOCATION, 'N/A')
-                            }
-            except Exception:
-                continue
-    return None
 
 @app.route('/luquan/')
 @app.route('/')
@@ -97,5 +76,9 @@ def hotel_connect_resource_sub(page_name=None):
         abort(404)
 
 if __name__ == "__main__":
+    # Khởi tạo geohash index cho nearby search
+    from restful_blueprint_hotel_connect import init_geohash_index
+    init_geohash_index()
+    
     # Tắt debug để tránh Werkzeug Reloader quét file liên tục gây tràn RAM
     app.run(host="0.0.0.0", port=5000, threaded=True)

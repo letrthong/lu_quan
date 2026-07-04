@@ -115,19 +115,35 @@ export const useHotelConnectApp = (t) => {
         const loadHotels = async () => {
             let accumulatedHotels = [];
 
-            const filePathsToFetch = filterLocationIds.includes("all")
-                ? provinces.map(p => p.filePathId).filter(Boolean)
-                : provinces.filter(p => filterLocationIds.includes(p.id)).map(p => p.filePathId).filter(Boolean);
-
-            for (const filePath of filePathsToFetch) {
-                if (ignore) break;
-                try {
-                    const hotelsData = await HotelAPI.fetchHotelsByFilePaths([filePath]);
-                    if (ignore) break;
-                    accumulatedHotels = [...accumulatedHotels, ...hotelsData];
+            // Sử dụng Bulk API để load tất cả hotels trong 1 request (nhanh hơn nhiều)
+            try {
+                const locationIdsToFetch = filterLocationIds.includes("all") 
+                    ? ['all'] 
+                    : filterLocationIds;
+                
+                accumulatedHotels = await HotelAPI.fetchHotelsBulk(locationIdsToFetch);
+                
+                if (!ignore) {
                     setHotels([...accumulatedHotels]);
-                } catch (error) {
-                    console.error(`Lỗi khi tải dữ liệu cho file ${filePath}:`, error);
+                }
+            } catch (bulkError) {
+                console.warn('Bulk API failed, fallback to sequential loading:', bulkError);
+                
+                // Fallback: Load từng file nếu bulk API không hoạt động
+                const filePathsToFetch = filterLocationIds.includes("all")
+                    ? provinces.map(p => p.filePathId).filter(Boolean)
+                    : provinces.filter(p => filterLocationIds.includes(p.id)).map(p => p.filePathId).filter(Boolean);
+
+                for (const filePath of filePathsToFetch) {
+                    if (ignore) break;
+                    try {
+                        const hotelsData = await HotelAPI.fetchHotelsByFilePaths([filePath]);
+                        if (ignore) break;
+                        accumulatedHotels = [...accumulatedHotels, ...hotelsData];
+                        setHotels([...accumulatedHotels]);
+                    } catch (error) {
+                        console.error(`Lỗi khi tải dữ liệu cho file ${filePath}:`, error);
+                    }
                 }
             }
 
