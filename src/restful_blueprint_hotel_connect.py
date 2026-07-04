@@ -3,6 +3,7 @@ import json
 import uuid
 import logging
 import threading
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 import sys
 
@@ -651,7 +652,10 @@ def _is_cache_valid():
 
 
 def _build_hotels_cache():
-    """Build cache từ tất cả file hotels"""
+    """Build cache từ tất cả file hotels - sử dụng parallel I/O"""
+    import time as time_module
+    start_time = time_module.time()
+    
     cache_data = {}
     all_hotels = []
     
@@ -659,22 +663,41 @@ def _build_hotels_cache():
     current_version = _read_data_version()
     
     schemas = schema_svc.read_schema()
+    
+    # Chuẩn bị danh sách files cần đọc
+    files_to_read = []
     for schema in schemas:
         location_id = schema.get('id')
         file_path_id = schema.get(HotelField.FILE_PATH_ID)
         if not file_path_id or not location_id:
             continue
-            
         file_path = os.path.join(HOTEL_CONFIG_DIR, file_path_id)
         if os.path.exists(file_path):
-            try:
-                with open(file_path, 'r', encoding='utf-8') as f:
-                    hotels = json.load(f)
-                    cache_data[location_id] = hotels
-                    all_hotels.extend(hotels)
-            except Exception as e:
-                logging.error(f"Lỗi khi đọc file {file_path}: {e}")
+            files_to_read.append((location_id, file_path))
+    
+    # Đọc song song các file với ThreadPoolExecutor
+    def _read_hotel_file(args):
+        location_id, file_path = args
+        try:
+            with open(file_path, 'r', encoding='utf-8') as f:
+                hotels = json.load(f)
+            return location_id, hotels, None
+        except Exception as e:
+            return location_id, [], str(e)
+    
+    # Sử dụng max_workers = số files hoặc 10 (tránh quá nhiều threads)
+    max_workers = min(len(files_to_read), 10) if files_to_read else 1
+    
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        futures = {executor.submit(_read_hotel_file, args): args for args in files_to_read}
+        for future in as_completed(futures):
+            location_id, hotels, error = future.result()
+            if error:
+                logging.error(f"Lỗi khi đọc file location {location_id}: {error}")
                 cache_data[location_id] = []
+            else:
+                cache_data[location_id] = hotels
+                all_hotels.extend(hotels)
     
     with _cache_lock:
         _hotels_cache['data'] = cache_data
@@ -682,7 +705,8 @@ def _build_hotels_cache():
         _hotels_cache['data_version'] = current_version
         _hotels_cache['timestamp'] = time.time()
     
-    logging.info(f"Đã build hotels cache: {len(cache_data)} khu vực, {len(all_hotels)} hotels, version={current_version}")
+    elapsed = time_module.time() - start_time
+    logging.info(f"Đã build hotels cache: {len(cache_data)} khu vực, {len(all_hotels)} hotels, version={current_version}, time={elapsed:.2f}s")
     return cache_data, all_hotels
 
 
@@ -922,6 +946,28 @@ def rebuild_index_endpoint():
     except Exception as e:
         logging.error(f"Lỗi khi rebuild index: {e}")
         return jsonify({HotelField.ERROR: str(e)}), 500
+
+
+# ============== CACHE PRE-WARMING ==============
+def warm_cache():
+    """
+    Pre-warm cache khi server khởi động.
+    Gọi hàm này trong app factory hoặc khi import module.
+    """
+    try:
+        logging.info("Bắt đầu warm cache hotels...")
+        _build_hotels_cache()
+        rebuild_geohash_index()
+        logging.info("Warm cache hoàn tất!")
+    except Exception as e:
+        logging.error(f"Lỗi khi warm cache: {e}")
+
+
+# Auto warm cache khi module được load (có thể disable bằng env var)
+if os.environ.get('HOTEL_DISABLE_CACHE_WARMUP', '').lower() != 'true':
+    # Chạy trong background thread để không block import
+    _warmup_thread = threading.Thread(target=warm_cache, daemon=True)
+    _warmup_thread.start()
 
 
 # Khởi tạo cache và index khi module được load
