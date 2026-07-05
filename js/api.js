@@ -287,6 +287,33 @@ const HotelAPI = {
             throw new Error(err.error || "Lỗi khi xóa schema");
         }
         return await response.json();
+    },
+
+    /**
+     * Lấy full detail của 1 hotel (bao gồm image, description)
+     * Gọi khi user click vào hotel cụ thể
+     * @param {string} hotelId - ID của hotel cần lấy detail
+     * @returns {Promise<Object>} - Full hotel data bao gồm image, description
+     */
+    fetchHotelDetail: async (hotelId) => {
+        if (!hotelId) return null;
+        
+        try {
+            const response = await fetch(
+                `${HotelAPI.baseUrl}/api/hotelconnect/v1/hotels/${hotelId}/detail`
+            );
+            
+            if (!response.ok) {
+                console.error(`Lỗi ${response.status} khi tải chi tiết hotel ${hotelId}`);
+                return null;
+            }
+            
+            const result = await response.json();
+            return result.data || null;
+        } catch (err) {
+            console.error(`Lỗi mạng khi tải chi tiết hotel ${hotelId}:`, err);
+            return null;
+        }
     }
 };
 

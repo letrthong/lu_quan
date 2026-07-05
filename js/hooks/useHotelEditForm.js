@@ -4,17 +4,59 @@ import { decodeBase64, encodeBase64, processImageUpload, isValidPhoneNumber, cal
 import { OPTIONAL_PHONE_TYPES } from '../constants';
 
 export const useHotelEditForm = (hotel, provinces, onClose, onSaveSuccess, onToast) => {
+    // State để lưu full hotel data (sau khi load detail)
+    const [fullHotel, setFullHotel] = useState(hotel);
+    // Nếu hotel chưa có description, cần load từ API → bắt đầu với loading = true
+    const [isLoadingDetail, setIsLoadingDetail] = useState(!hotel.description);
+    
+    // Load full hotel detail nếu chưa có description hoặc image (bulk API không trả)
+    useEffect(() => {
+        if (!hotel || !hotel.id) return;
+        
+        // Nếu đã có description thì không cần load lại
+        if (hotel.description) {
+            setFullHotel(hotel);
+            setIsLoadingDetail(false);
+            return;
+        }
+        
+        // Load full detail từ API
+        setIsLoadingDetail(true);
+        HotelAPI.fetchHotelDetail(hotel.id)
+            .then(detail => {
+                if (detail) {
+                    setFullHotel({ ...hotel, ...detail });
+                }
+            })
+            .catch(err => {
+                console.error("Lỗi khi tải chi tiết hotel:", err);
+            })
+            .finally(() => {
+                setIsLoadingDetail(false);
+            });
+    }, [hotel?.id]);
+
     const [pickerPos, setPickerPos] = useState({ lat: hotel.lat || 11.9404, lng: hotel.lng || 108.4583 });
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [apiError, setApiError] = useState(null);
     const [selectedType, setSelectedType] = useState(hotel.type || "");
 
-    const decodedWebsite = useMemo(() => decodeBase64(hotel.website), [hotel.website]);
-    const decodedAddress = useMemo(() => decodeBase64(hotel.address), [hotel.address]);
+    const decodedWebsite = useMemo(() => decodeBase64(fullHotel.website), [fullHotel.website]);
+    const decodedAddress = useMemo(() => decodeBase64(fullHotel.address), [fullHotel.address]);
 
-    const [websiteUrl, setWebsiteUrl] = useState(decodedWebsite || "");
-    const [imageBase64, setImageBase64] = useState(hotel.image || "");
+    const [websiteUrl, setWebsiteUrl] = useState("");
+    const [imageBase64, setImageBase64] = useState("");
     const [isLocating, setIsLocating] = useState(false);
+
+    // Sync state khi fullHotel thay đổi (sau khi load detail từ API)
+    useEffect(() => {
+        if (fullHotel.image) {
+            setImageBase64(fullHotel.image);
+        }
+        if (fullHotel.website) {
+            setWebsiteUrl(decodeBase64(fullHotel.website) || "");
+        }
+    }, [fullHotel.image, fullHotel.website]);
 
     const [locationId, setLocationId] = useState(hotel.locationId || "");
     const [isProvinceOpen, setIsProvinceOpen] = useState(false);
@@ -56,8 +98,8 @@ export const useHotelEditForm = (hotel, provinces, onClose, onSaveSuccess, onToa
         return { areaCenter: center, locationName: name, areaRadius: radius };
     }, [locationId, provinces]);
 
-    const decodedDescription = useMemo(() => decodeBase64(hotel.description), [hotel.description]);
-    const decodedPhone = useMemo(() => decodeBase64(hotel.phone), [hotel.phone]);
+    const decodedDescription = useMemo(() => decodeBase64(fullHotel.description), [fullHotel.description]);
+    const decodedPhone = useMemo(() => decodeBase64(fullHotel.phone), [fullHotel.phone]);
 
     const handleGetCurrentLocation = () => {
         if (!navigator.geolocation) {
@@ -232,6 +274,7 @@ export const useHotelEditForm = (hotel, provinces, onClose, onSaveSuccess, onToa
         handleGetCurrentLocation,
         handleImageUpload,
         handleSubmit,
-        isOutside
+        isOutside,
+        isLoadingDetail
     };
 };

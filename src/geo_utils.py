@@ -2,6 +2,8 @@ from math import radians, sin, cos, sqrt, atan2
 import pygeohash as pgh
 import threading
 
+from hotel_constants import LIGHTWEIGHT_FIELDS
+
 def haversine(lat1, lng1, lat2, lng2):
     """Hàm tính khoảng cách giữa 2 điểm lat/lng trên Trái Đất (công thức Haversine)"""
     R = 6371  # Bán kính Trái Đất (km)
@@ -156,10 +158,10 @@ def find_nearby_fast(lat, lng, radius_km, precision=GEOHASH_PRECISION):
                 
             dist = haversine(lat, lng, h_lat, h_lng)
             if dist <= radius_km:
-                results.append({
-                    **hotel,
-                    'distance': round(dist, 2)
-                })
+                # Chỉ trả về lightweight fields + distance (không có image, description)
+                lightweight_hotel = {k: v for k, v in hotel.items() if k in LIGHTWEIGHT_FIELDS}
+                lightweight_hotel['distance'] = round(dist, 2)
+                results.append(lightweight_hotel)
         except (ValueError, TypeError):
             continue
     

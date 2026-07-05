@@ -160,11 +160,20 @@ export const MainLeafletMap = ({ hotels, selectedHotel, onSelectHotel, filterCit
             });
             map.addLayer(clusterGroupRef.current);
         }
+        
+        // Dừng animation trước khi clear để tránh lỗi _icon undefined
+        if (clusterGroupRef.current._inZoomAnimation) {
+            clusterGroupRef.current._moveEnd();
+        }
         clusterGroupRef.current.clearLayers();
         markersRef.current = {};
 
-        // Thêm marker mới
+        // Thêm marker mới (chỉ những hotel có lat/lng hợp lệ)
         hotels.forEach(hotel => {
+            if (hotel.lat == null || hotel.lng == null || isNaN(hotel.lat) || isNaN(hotel.lng)) {
+                return; // Skip hotel không có tọa độ hợp lệ
+            }
+            
             const isSelected = selectedHotel?.id === hotel.id;
             const customIcon = createHotelIcon(hotel, isSelected);
 
@@ -183,17 +192,27 @@ export const MainLeafletMap = ({ hotels, selectedHotel, onSelectHotel, filterCit
         const prevHotel = previousSelectedHotelRef.current;
         if (prevHotel) {
             const prevMarker = markersRef.current[prevHotel.id];
-            if (prevMarker) {
-                prevMarker.setIcon(createHotelIcon(prevHotel, false));
-                prevMarker.setZIndexOffset(0);
+            // Chỉ update icon nếu marker đang hiển thị trên map (có _icon DOM element)
+            if (prevMarker && prevMarker._icon) {
+                try {
+                    prevMarker.setIcon(createHotelIcon(prevHotel, false));
+                    prevMarker.setZIndexOffset(0);
+                } catch (e) {
+                    // Marker có thể đã bị cluster, bỏ qua lỗi
+                }
             }
         }
 
         if (selectedHotel) {
             const newMarker = markersRef.current[selectedHotel.id];
-            if (newMarker) {
-                newMarker.setIcon(createHotelIcon(selectedHotel, true));
-                if (!newMarker.__parent) { newMarker.setZIndexOffset(1000); }
+            // Chỉ update icon nếu marker đang hiển thị trên map (không bị cluster)
+            if (newMarker && newMarker._icon) {
+                try {
+                    newMarker.setIcon(createHotelIcon(selectedHotel, true));
+                    newMarker.setZIndexOffset(1000);
+                } catch (e) {
+                    // Marker có thể đã bị cluster, bỏ qua lỗi
+                }
             }
         }
         
@@ -209,20 +228,30 @@ export const MainLeafletMap = ({ hotels, selectedHotel, onSelectHotel, filterCit
 
         if (selectedHotel) {
             const marker = markersRef.current[selectedHotel.id];
-            if (marker) {
+            if (marker && clusterGroupRef.current) {
                 const zoomAndFly = () => {
                     setTimeout(() => {
-                        if (mapInstance.current) {
+                        if (mapInstance.current && selectedHotel.lat != null && selectedHotel.lng != null) {
                             mapInstance.current.flyTo([selectedHotel.lat, selectedHotel.lng], 12, { duration: 0.4 });
                         }
                     }, 100);
                 };
-                clusterGroupRef.current.zoomToShowLayer(marker, zoomAndFly);
+                try {
+                    clusterGroupRef.current.zoomToShowLayer(marker, zoomAndFly);
+                } catch (e) {
+                    // Fallback: zoom trực tiếp nếu zoomToShowLayer lỗi
+                    if (selectedHotel.lat != null && selectedHotel.lng != null) {
+                        mapInstance.current.flyTo([selectedHotel.lat, selectedHotel.lng], 12, { duration: 0.4 });
+                    }
+                }
             }
         } 
         else if (filterCity && hotels.length > 0) {
-            const bounds = window.L.latLngBounds(hotels.map(h => [h.lat, h.lng]));
-            mapInstance.current.flyToBounds(bounds, { padding: [50, 50], maxZoom: 13, duration: 1.5 });
+            const validHotels = hotels.filter(h => h.lat != null && h.lng != null);
+            if (validHotels.length > 0) {
+                const bounds = window.L.latLngBounds(validHotels.map(h => [h.lat, h.lng]));
+                mapInstance.current.flyToBounds(bounds, { padding: [50, 50], maxZoom: 13, duration: 1.5 });
+            }
         } 
         else if (!filterCity) {
             if (isFirstRun) {

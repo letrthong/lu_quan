@@ -35,8 +35,21 @@ const HotelEditForm = ({ hotel, provinces, onClose, onSaveSuccess, onToast }) =>
         handleGetCurrentLocation,
         handleImageUpload,
         handleSubmit,
-        isOutside
+        isOutside,
+        isLoadingDetail
     } = useHotelEditForm(hotel, provinces, onClose, onSaveSuccess, onToast);
+
+    // Hiển thị loading khi đang tải chi tiết hotel
+    if (isLoadingDetail) {
+        return (
+            <div className="fixed inset-0 bg-stone-900/80 backdrop-blur-md z-[100] flex items-center justify-center">
+                <div className="bg-white p-8 rounded-2xl shadow-xl flex flex-col items-center gap-4">
+                    <Icon name="loader" size={32} className="animate-spin text-blue-600" />
+                    <p className="text-sm font-bold text-stone-600">Đang tải thông tin chi tiết...</p>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="fixed inset-0 bg-stone-900/80 backdrop-blur-md z-[100] flex items-center justify-center sm:p-6">

@@ -13,8 +13,9 @@ from datetime import datetime, timezone
 from flask import Blueprint, jsonify, request, send_from_directory
  
 
-from  hotel_constants import HOTEL_CONFIG_DIR, HotelField, HotelStatus, CACHE_VERSION_FILE
+from  hotel_constants import HOTEL_CONFIG_DIR, HotelField, HotelStatus, CACHE_VERSION_FILE, LIGHTWEIGHT_FIELDS
 from  geo_utils import haversine
+from  image_utils import ensure_thumbnail
 import hotel_schema_service as schema_svc
 import hotel_helpers as helpers
 
@@ -113,6 +114,9 @@ def submit_hotel_request():
         error_message = f"Vị trí khách sạn phải cách trung tâm {location_name} không quá {area_radius:g}km. Khoảng cách hiện tại là {distance:.2f}km."
         return jsonify({HotelField.ERROR: error_message}), 400
 
+    # Tạo thumbnail tự động nếu có image
+    req_data = ensure_thumbnail(req_data)
+    
     with requests_lock:
         data = helpers.read_requests()
         data.append(req_data)
@@ -206,6 +210,11 @@ def update_hotel_request(request_id):
                 for k, v in req_data.items():
                     if k not in [HotelField.ID, HotelField.CREATED_AT]:
                         all_requests[i][k] = v
+                
+                # Tạo thumbnail mới nếu image được cập nhật
+                if 'image' in req_data:
+                    all_requests[i] = ensure_thumbnail(all_requests[i], force_regenerate=True)
+                
                 all_requests[i][HotelField.UPDATED_AT] = datetime.now().strftime("%Y-%m-%d")
                 found = True
                 updated_request = all_requests[i]
@@ -500,6 +509,11 @@ def update_hotel(hotel_id):
                                 for k, v in req_data.items():
                                     if k not in [HotelField.ID, HotelField.CREATED_AT]:
                                         city_hotels[i][k] = v
+                                
+                                # Tạo thumbnail mới nếu image được cập nhật
+                                if 'image' in req_data:
+                                    city_hotels[i] = ensure_thumbnail(city_hotels[i], force_regenerate=True)
+                                
                                 city_hotels[i][HotelField.UPDATED_AT] = datetime.now().strftime("%Y-%m-%d")
                                 updated_hotel = city_hotels[i]
                                 break
@@ -783,15 +797,51 @@ def get_hotels_bulk():
     try:
         hotels = _get_cached_hotels(location_ids)
         
+        # Filter chỉ giữ lightweight fields (không có image, description)
+        lightweight_hotels = [
+            {k: v for k, v in hotel.items() if k in LIGHTWEIGHT_FIELDS}
+            for hotel in hotels
+        ]
+        
         return jsonify({
             HotelField.SUCCESS: True,
-            'count': len(hotels),
+            'count': len(lightweight_hotels),
             'locationIds': location_ids,
-            HotelField.DATA: hotels
+            HotelField.DATA: lightweight_hotels
         })
     except Exception as e:
         logging.error(f"Lỗi khi load bulk hotels: {e}")
         return jsonify({HotelField.ERROR: "Lỗi server"}), 500
+
+
+@hotel_connect_api.route('/hotels/<hotel_id>/detail', methods=['GET'])
+def get_hotel_detail(hotel_id):
+    """
+    API lấy full detail của 1 hotel (bao gồm image, description).
+    Gọi khi user click vào hotel cụ thể.
+    """
+    with schema_lock:
+        schemas = schema_svc.read_schema()
+        
+        for schema in schemas:
+            file_path_id = schema.get(HotelField.FILE_PATH_ID)
+            if not file_path_id:
+                continue
+            file_path = os.path.join(HOTEL_CONFIG_DIR, file_path_id)
+            if os.path.exists(file_path):
+                try:
+                    with open(file_path, 'r', encoding='utf-8') as f:
+                        hotels = json.load(f)
+                    for hotel in hotels:
+                        if hotel.get(HotelField.ID) == hotel_id:
+                            return jsonify({
+                                HotelField.SUCCESS: True,
+                                HotelField.DATA: hotel
+                            })
+                except Exception as e:
+                    logging.error(f"Lỗi khi đọc file {file_path}: {e}")
+    
+    return jsonify({HotelField.ERROR: "Không tìm thấy khách sạn"}), 404
 
 
 @hotel_connect_api.route('/hotels/cache/invalidate', methods=['POST'])

@@ -204,7 +204,7 @@ const MainApp = () => {
                                                 ${selectedHotel?.id === hotel.id ? 'border-red-600 ring-4 ring-red-100 shadow-lg' : 'border-transparent shadow-sm'}
                                             `}
                                         >
-                                            <img src={hotel.image} onError={handleImageError} className="w-16 h-16 rounded-xl object-cover shrink-0 border border-stone-100 shadow-sm" />
+                                            <img src={hotel.thumbnail || hotel.image} onError={handleImageError} className="w-16 h-16 rounded-xl object-cover shrink-0 border border-stone-100 shadow-sm" />
                                             <div className="flex-1 min-w-0 flex flex-col justify-between py-0.5">
                                                 <div>
                                                     {hotel.type && (

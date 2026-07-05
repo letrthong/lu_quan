@@ -52,7 +52,7 @@ const HotelDetail = ({ hotel, onClose, onShare, formatDate, handleImageError, on
             
             <div className="relative bg-white w-full max-h-[85vh] md:max-h-full md:w-[400px] md:rounded-3xl shadow-[0_-10px_40px_rgba(0,0,0,0.2)] md:shadow-2xl overflow-hidden flex flex-col rounded-t-[40px] border-t-4 border-orange-700 md:border-none pb-safe isolate pointer-events-auto">
                 <div className="relative h-48 sm:h-56 shrink-0 group">
-                    <img src={hotel.image} onError={handleImageError} className="w-full h-full object-cover" />
+                    <img src={hotel.image || hotel.thumbnail} onError={handleImageError} className="w-full h-full object-cover" />
                     <button onClick={onClose} className="absolute top-3 right-3 sm:top-4 sm:right-4 z-[60] bg-stone-900/60 backdrop-blur-md text-white p-2 sm:p-2.5 rounded-full hover:bg-stone-900/80 active:scale-90 transition-all shadow-xl border border-white/20">
                         <Icon name="x" size={20} />
                     </button>

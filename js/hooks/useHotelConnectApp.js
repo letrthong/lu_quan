@@ -47,6 +47,37 @@ export const useHotelConnectApp = (t) => {
     const [editingHotel, setEditingHotel] = useState(null);
     const [toastMessage, setToastMessage] = useState("");
     const [reviewConfirm, setReviewConfirm] = useState(null);
+    const [isLoadingDetail, setIsLoadingDetail] = useState(false);
+
+    // Lazy load hotel detail (image, description) khi user click vào hotel
+    useEffect(() => {
+        if (!selectedHotel || !selectedHotel.id) return;
+        
+        // Nếu đã có image hoặc description thì không cần load lại
+        if (selectedHotel.image || selectedHotel.description) return;
+        
+        let isCancelled = false;
+        setIsLoadingDetail(true);
+        
+        HotelAPI.fetchHotelDetail(selectedHotel.id)
+            .then(fullHotel => {
+                if (isCancelled || !fullHotel) return;
+                
+                // Merge full detail vào selectedHotel
+                setSelectedHotel(prev => {
+                    if (!prev || prev.id !== fullHotel.id) return prev;
+                    return { ...prev, ...fullHotel };
+                });
+            })
+            .catch(err => {
+                console.error("Lỗi khi tải chi tiết hotel:", err);
+            })
+            .finally(() => {
+                if (!isCancelled) setIsLoadingDetail(false);
+            });
+        
+        return () => { isCancelled = true; };
+    }, [selectedHotel?.id]);
 
     useEffect(() => {
         HotelAPI.getSchemas()
@@ -575,6 +606,7 @@ export const useHotelConnectApp = (t) => {
         formatDate,
         handleCloseHotelDetail,
         filteredHotels,
-        handleShare
+        handleShare,
+        isLoadingDetail
     };
 };

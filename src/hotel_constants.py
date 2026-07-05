@@ -41,6 +41,13 @@ class HotelField:
 
 
 
+# --- Lightweight fields for bulk loading (không có image, description) ---
+LIGHTWEIGHT_FIELDS = [
+    "id", "name", "type", "address", "phone", "website", 
+    "locationId", "status", "rating", "createdAt", "updatedAt", 
+    "lat", "lng", "thumbnail"
+]
+
 # --- Hotel status enum ---
 from enum import Enum
 
