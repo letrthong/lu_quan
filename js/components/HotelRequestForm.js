@@ -89,7 +89,7 @@ const HotelRequestForm = ({ provinces, onClose, onSubmitSuccess, onToast }) => {
                                                         key={p.id}
                                                         className={`px-4 py-2.5 hover:bg-stone-50 cursor-pointer text-xs font-bold transition-colors ${locationId === p.id ? 'text-orange-700 bg-orange-50' : 'text-stone-700'}`}
                                                         onClick={() => {
-                                                            handleLocationChange({ target: { value: p.id } });
+                                                            handleLocationChange(p.id);
                                                             setIsProvinceOpen(false);
                                                             setProvinceSearchQuery("");
                                                         }}
