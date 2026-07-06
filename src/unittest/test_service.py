@@ -9,19 +9,23 @@ from flask import Flask
 from app import app
 from hotel_constants import HotelField
 
+# Mock paths - blueprint uses `import hotel_schema_service as schema_svc`
+MOCK_READ_SCHEMA = 'hotel_schema_service.read_schema'
+MOCK_WRITE_SCHEMA = 'hotel_schema_service.write_schema'
+
 class HotelConnectServiceTestCase(unittest.TestCase):
     def setUp(self):
         self.app = app.test_client()
         self.app.testing = True
 
-    @patch('app.read_schema', return_value=[])
+    @patch(MOCK_READ_SCHEMA, return_value=[])
     def test_get_schema_empty(self, mock_read_schema):
         response = self.app.get('/api/hotelconnect/v1/schema')
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json, [])
 
-    @patch('app.write_schema')
-    @patch('app.read_schema', return_value=[])
+    @patch(MOCK_WRITE_SCHEMA)
+    @patch(MOCK_READ_SCHEMA, return_value=[])
     def test_add_schema(self, mock_read_schema, mock_write_schema):
         data = {
             HotelField.FILE_PATH_ID: "test.json",
@@ -36,7 +40,7 @@ class HotelConnectServiceTestCase(unittest.TestCase):
         self.assertIn('data', response.json)
         self.assertEqual(response.json['data'][HotelField.LOCATION], "Test City")
 
-    @patch('app.read_schema', return_value=[{
+    @patch(MOCK_READ_SCHEMA, return_value=[{
         HotelField.ID: "1",
         HotelField.FILE_PATH_ID: "a.json",
         HotelField.LOCATION: "A",
@@ -44,7 +48,7 @@ class HotelConnectServiceTestCase(unittest.TestCase):
         HotelField.LNG: 20.0,
         HotelField.RADIUS: 10.0
     }])
-    @patch('app.write_schema')
+    @patch(MOCK_WRITE_SCHEMA)
     def test_update_schema(self, mock_write_schema, mock_read_schema):
         data = {
             HotelField.FILE_PATH_ID: "b.json",
@@ -59,20 +63,20 @@ class HotelConnectServiceTestCase(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json['data'][HotelField.LOCATION], "B")
 
-    @patch('app.read_schema', return_value=[{
+    @patch(MOCK_READ_SCHEMA, return_value=[{
         HotelField.ID: "1",
         HotelField.FILE_PATH_ID: "a.json",
         HotelField.LOCATION: "A",
         HotelField.LAT: 10.0,
         HotelField.LNG: 20.0
     }])
-    @patch('app.write_schema')
+    @patch(MOCK_WRITE_SCHEMA)
     def test_delete_schema(self, mock_write_schema, mock_read_schema):
         response = self.app.delete('/api/hotelconnect/v1/schema/1')
         self.assertEqual(response.status_code, 200)
         self.assertIn('message', response.json)
 
-    @patch('app.read_schema', return_value=[{
+    @patch(MOCK_READ_SCHEMA, return_value=[{
         HotelField.ID: "1",
         HotelField.FILE_PATH_ID: "a.json",
         HotelField.LOCATION: "A",
@@ -94,13 +98,13 @@ class HotelConnectServiceTestCase(unittest.TestCase):
         self.assertEqual(response.status_code, 400)
         self.assertIn("error", response.json)
 
-    @patch('app.read_schema', return_value=[])
+    @patch(MOCK_READ_SCHEMA, return_value=[])
     def test_delete_schema_not_found(self, mock_read_schema):
         response = self.app.delete('/api/hotelconnect/v1/schema/999')
         self.assertEqual(response.status_code, 404)
         self.assertIn("error", response.json)
 
-    @patch('app.read_schema', return_value=[])
+    @patch(MOCK_READ_SCHEMA, return_value=[])
     def test_add_schema_invalid(self, mock_read_schema):
         data = {
             HotelField.LAT: 10.0,
