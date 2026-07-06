@@ -1,5 +1,6 @@
 import sys
 import os
+os.environ['HOTEL_DISABLE_CACHE_WARMUP'] = 'true'
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 import unittest
