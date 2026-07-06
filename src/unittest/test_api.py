@@ -14,16 +14,16 @@ class HotelConnectApiTestCase(unittest.TestCase):
         self.app.testing = True
 
     # --- SCHEMA API TESTS (đã có ở test_service.py, chỉ ví dụ) ---
-    @patch('app.read_schema', return_value=[])
+    @patch('hotel_schema_service.read_schema', return_value=[])
     def test_get_schema_empty(self, mock_read_schema):
         response = self.app.get('/api/hotelconnect/v1/schema')
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json, [])
 
     # --- HOTEL REQUEST API TESTS ---
-    @patch('app.read_schema', return_value=[{HotelField.LOCATION: "Test City", HotelField.LAT: 10.0, HotelField.LNG: 20.0, HotelField.FILE_PATH_ID: "test.json", "id": "loc1", HotelField.RADIUS: 10.0}])
-    @patch('app.read_requests', return_value=[])
-    @patch('app.write_requests')
+    @patch('hotel_schema_service.read_schema', return_value=[{HotelField.LOCATION: "Test City", HotelField.LAT: 10.0, HotelField.LNG: 20.0, HotelField.FILE_PATH_ID: "test.json", "id": "loc1", HotelField.RADIUS: 10.0}])
+    @patch('hotel_helpers.read_requests', return_value=[])
+    @patch('hotel_helpers.write_requests')
     def test_submit_hotel_request_success(self, mock_write, mock_read_req, mock_read_schema):
         data = {HotelField.LAT: 10.0, HotelField.LNG: 20.0, HotelField.LOCATION: "Test City", HotelField.ID: "req1", HotelField.LOCATION_ID: "loc1"}
         response = self.app.post('/api/hotelconnect/v1/hotels/request',
@@ -32,7 +32,7 @@ class HotelConnectApiTestCase(unittest.TestCase):
         self.assertEqual(response.status_code, 201)
         self.assertTrue(response.json["success"])
 
-    @patch('app.read_schema', return_value=[{HotelField.LOCATION: "Test City", HotelField.LAT: 10.0, HotelField.LNG: 20.0, HotelField.FILE_PATH_ID: "test.json", "id": "loc1", HotelField.RADIUS: 10.0}])
+    @patch('hotel_schema_service.read_schema', return_value=[{HotelField.LOCATION: "Test City", HotelField.LAT: 10.0, HotelField.LNG: 20.0, HotelField.FILE_PATH_ID: "test.json", "id": "loc1", HotelField.RADIUS: 10.0}])
     def test_submit_hotel_request_missing_data(self, mock_read_schema):
         data = {HotelField.LAT: 10.0, HotelField.LOCATION: "Test City"}  # thiếu lng
         response = self.app.post('/api/hotelconnect/v1/hotels/request',
@@ -41,7 +41,7 @@ class HotelConnectApiTestCase(unittest.TestCase):
         self.assertEqual(response.status_code, 400)
         self.assertIn("error", response.json)
 
-    @patch('app.read_schema', return_value=[])
+    @patch('hotel_schema_service.read_schema', return_value=[])
     def test_submit_hotel_request_no_area(self, mock_read_schema):
         data = {HotelField.LAT: 10.0, HotelField.LNG: 20.0, HotelField.LOCATION: "Unknown", HotelField.LOCATION_ID: "nonexistent"}
         response = self.app.post('/api/hotelconnect/v1/hotels/request',
@@ -50,7 +50,7 @@ class HotelConnectApiTestCase(unittest.TestCase):
         self.assertEqual(response.status_code, 400)
         self.assertIn("error", response.json)
 
-    @patch('app.read_schema', return_value=[{HotelField.LOCATION: "Test City", HotelField.LAT: 10.0, HotelField.LNG: 20.0, HotelField.FILE_PATH_ID: "test.json", "id": "loc1", HotelField.RADIUS: 10.0}])
+    @patch('hotel_schema_service.read_schema', return_value=[{HotelField.LOCATION: "Test City", HotelField.LAT: 10.0, HotelField.LNG: 20.0, HotelField.FILE_PATH_ID: "test.json", "id": "loc1", HotelField.RADIUS: 10.0}])
     def test_submit_hotel_request_too_far(self, mock_read_schema):
         data = {HotelField.LAT: 50.0, HotelField.LNG: 50.0, HotelField.LOCATION: "Test City", HotelField.LOCATION_ID: "loc1"}
         response = self.app.post('/api/hotelconnect/v1/hotels/request',
@@ -60,17 +60,17 @@ class HotelConnectApiTestCase(unittest.TestCase):
         self.assertIn("error", response.json)
 
     # --- GET HOTEL REQUESTS ---
-    @patch('app.read_requests', return_value=[{HotelField.ID: "req1"}])
+    @patch('hotel_helpers.read_requests', return_value=[{HotelField.ID: "req1"}])
     def test_get_hotel_requests(self, mock_read):
         response = self.app.get('/api/hotelconnect/v1/hotels/request')
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json, [{HotelField.ID: "req1"}])
 
     # --- APPROVE/REJECT ---
-    @patch('app.read_schema', return_value=[{HotelField.LOCATION: "Test City", HotelField.LAT: 10.0, HotelField.LNG: 20.0, HotelField.FILE_PATH_ID: "test.json", "id": "loc1"}])
-    @patch('app.read_requests', return_value=[{HotelField.ID: "req1", HotelField.LOCATION: "Test City", HotelField.LOCATION_ID: "loc1"}])
-    @patch('app.get_hotel_file_path', return_value="/tmp/test.json")
-    @patch('app.write_requests')
+    @patch('hotel_schema_service.read_schema', return_value=[{HotelField.LOCATION: "Test City", HotelField.LAT: 10.0, HotelField.LNG: 20.0, HotelField.FILE_PATH_ID: "test.json", "id": "loc1"}])
+    @patch('hotel_helpers.read_requests', return_value=[{HotelField.ID: "req1", HotelField.LOCATION: "Test City", HotelField.LOCATION_ID: "loc1"}])
+    @patch('hotel_helpers.get_hotel_file_path', return_value="/tmp/test.json")
+    @patch('hotel_helpers.write_requests')
     @patch('os.path.exists', return_value=False)
     @patch('builtins.open', new_callable=MagicMock)
     def test_approve_hotel_request_success(self, mock_open, mock_exists, mock_write, mock_get_file, mock_read, mock_read_schema):
@@ -78,20 +78,20 @@ class HotelConnectApiTestCase(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn("success", response.json)
 
-    @patch('app.read_requests', return_value=[])
+    @patch('hotel_helpers.read_requests', return_value=[])
     def test_approve_hotel_request_not_found(self, mock_read):
         response = self.app.post('/api/hotelconnect/v1/requests/req1/approve')
         self.assertEqual(response.status_code, 404)
         self.assertIn("error", response.json)
 
-    @patch('app.read_requests', return_value=[{HotelField.ID: "req1"}])
+    @patch('hotel_helpers.read_requests', return_value=[{HotelField.ID: "req1"}])
     def test_reject_hotel_request_success(self, mock_read):
-        with patch('app.write_requests') as mock_write:
+        with patch('hotel_helpers.write_requests') as mock_write:
             response = self.app.post('/api/hotelconnect/v1/requests/req1/reject')
             self.assertEqual(response.status_code, 200)
             self.assertIn("success", response.json)
 
-    @patch('app.read_requests', return_value=[])
+    @patch('hotel_helpers.read_requests', return_value=[])
     def test_reject_hotel_request_not_found(self, mock_read):
         response = self.app.post('/api/hotelconnect/v1/requests/req1/reject')
         self.assertEqual(response.status_code, 404)
