@@ -607,19 +607,42 @@ _hotels_cache = {
     'timestamp': 0,       # Thời điểm cache được build
     'data_version': 0     # Version của data khi build cache
 }
-_cache_lock = threading.Lock()
+_cache_lock = threading.RLock()
+_geohash_lock = threading.RLock()
+
+# Các biến phục vụ cache TTL của version file nhằm tránh đọc đĩa liên tục
+_last_version_check_time = 0
+_cached_file_version = 0
+VERSION_CHECK_TTL = 1.0  # Check version file tối đa 1 lần mỗi giây
 
 
 def _read_data_version():
-    """Đọc version hiện tại của data từ file config"""
-    try:
-        if os.path.exists(CACHE_VERSION_FILE):
-            with open(CACHE_VERSION_FILE, 'r', encoding='utf-8') as f:
-                data = json.load(f)
-                return data.get('version', 0)
-    except Exception as e:
-        logging.warning(f"Không thể đọc cache version file: {e}")
-    return 0
+    """Đọc version hiện tại của data từ file config (sử dụng cơ chế TTL)"""
+    global _last_version_check_time, _cached_file_version
+    now = time.time()
+    
+    # Fast path check TTL không cần lock
+    if now - _last_version_check_time < VERSION_CHECK_TTL:
+        return _cached_file_version
+        
+    with _cache_lock:
+        # Re-check TTL trong lock để tránh nhiều thread đọc file đồng thời khi hết hạn TTL
+        if now - _last_version_check_time < VERSION_CHECK_TTL:
+            return _cached_file_version
+            
+        try:
+            if os.path.exists(CACHE_VERSION_FILE):
+                with open(CACHE_VERSION_FILE, 'r', encoding='utf-8') as f:
+                    data = json.load(f)
+                    _cached_file_version = data.get('version', 0)
+            else:
+                _cached_file_version = 0
+        except Exception as e:
+            logging.warning(f"Không thể đọc cache version file: {e}")
+            _cached_file_version = 0
+            
+        _last_version_check_time = time.time()
+        return _cached_file_version
 
 
 def _update_data_version():
@@ -627,7 +650,9 @@ def _update_data_version():
     Cập nhật version khi có thay đổi data.
     Gọi hàm này sau mỗi thao tác: approve, update, delete hotel.
     Tất cả instance sẽ thấy version mới khi check.
+    Ghi dữ liệu atomically sử dụng file tạm và renaming.
     """
+    global _last_version_check_time, _cached_file_version
     try:
         new_version = int(time.time() * 1000)  # milliseconds timestamp
         version_data = {
@@ -635,9 +660,19 @@ def _update_data_version():
             'updated_at': datetime.now().isoformat(),
             'updated_by': f"instance_{os.getpid()}"
         }
-        with open(CACHE_VERSION_FILE, 'w', encoding='utf-8') as f:
+        
+        # Ghi ra file tạm trước để đảm bảo tính atomic
+        tmp_file = CACHE_VERSION_FILE + ".tmp"
+        with open(tmp_file, 'w', encoding='utf-8') as f:
             json.dump(version_data, f, ensure_ascii=False, indent=2)
-        logging.info(f"Data version updated: {new_version}")
+        os.replace(tmp_file, CACHE_VERSION_FILE)
+        
+        # Cập nhật ngay bộ nhớ đệm cache version tại instance hiện tại
+        with _cache_lock:
+            _cached_file_version = new_version
+            _last_version_check_time = time.time()
+            
+        logging.info(f"Data version updated atomically: {new_version}")
         return new_version
     except Exception as e:
         logging.error(f"Không thể cập nhật cache version file: {e}")
@@ -650,10 +685,11 @@ def _is_cache_valid():
     Cache invalid khi:
     1. Data version trong file khác với version trong cache (instance khác đã thay đổi data)
     """
-    # Check data version từ file config (rất nhanh - chỉ đọc 1 file nhỏ)
     current_version = _read_data_version()
-    if current_version > _hotels_cache.get('data_version', 0):
-        logging.info(f"Phát hiện data version mới: {current_version} > {_hotels_cache.get('data_version', 0)}")
+    with _cache_lock:
+        cache_version = _hotels_cache.get('data_version', 0)
+    if current_version > cache_version:
+        logging.info(f"Phát hiện data version mới: {current_version} > {cache_version}")
         return False
     
     return True
@@ -724,7 +760,10 @@ def _get_cached_hotels(location_ids=None):
     location_ids: list các locationId cần lấy, None = lấy tất cả
     """
     if not _is_cache_valid():
-        _build_hotels_cache()
+        with _cache_lock:
+            # Recheck under lock để tránh Cache Stampede
+            if not _is_cache_valid():
+                _build_hotels_cache()
     
     with _cache_lock:
         if location_ids is None or 'all' in location_ids:
@@ -742,13 +781,17 @@ def invalidate_hotels_cache():
     Gọi hàm này sau mỗi thao tác thay đổi data: approve, update, delete hotel.
     Instance khác sẽ thấy version mới và tự rebuild cache.
     """
-    global _geohash_index_timestamp, _geohash_index_data_version
+    global _geohash_index_timestamp, _geohash_index_data_version, _last_version_check_time, _cached_file_version
     
     # Cập nhật data version trong file config - tất cả instance sẽ thấy
     _update_data_version()
     
-    # Reset local cache
+    # Force reset TTL check để buộc các truy vấn sau đọc từ đĩa
     with _cache_lock:
+        _last_version_check_time = 0
+        _cached_file_version = 0
+        
+        # Reset local cache
         _hotels_cache['timestamp'] = 0
         _hotels_cache['data_version'] = 0
     
@@ -895,11 +938,12 @@ def _load_all_hotels_for_index():
 def rebuild_geohash_index():
     """Rebuild toàn bộ geohash index từ dữ liệu hiện tại"""
     global _geohash_index_data_version
-    hotels = _load_all_hotels_for_index()
-    count = build_geohash_index(hotels)
-    _geohash_index_data_version = _read_data_version()
-    logging.info(f"Đã rebuild geohash index: {count} cells, {len(hotels)} hotels, version={_geohash_index_data_version}")
-    return count
+    with _geohash_lock:
+        hotels = _load_all_hotels_for_index()
+        count = build_geohash_index(hotels)
+        _geohash_index_data_version = _read_data_version()
+        logging.info(f"Đã rebuild geohash index: {count} cells, {len(hotels)} hotels, version={_geohash_index_data_version}")
+        return count
 
 
 def _ensure_geohash_index_fresh():
@@ -909,18 +953,22 @@ def _ensure_geohash_index_fresh():
     """
     global _geohash_index_timestamp, _geohash_index_data_version
     
-    # Nếu chưa build lần nào, build ngay
-    if _geohash_index_timestamp == 0:
-        rebuild_geohash_index()
-        _geohash_index_timestamp = time.time()
+    # Fast path check không cần lock
+    if _geohash_index_timestamp != 0 and _read_data_version() <= _geohash_index_data_version:
         return
     
-    # Kiểm tra data version từ file config
-    current_version = _read_data_version()
-    if current_version > _geohash_index_data_version:
-        logging.info(f"Phát hiện data version mới cho geohash: {current_version} > {_geohash_index_data_version}")
-        rebuild_geohash_index()
-        _geohash_index_timestamp = time.time()
+    with _geohash_lock:
+        # Re-check under lock (Double-Checked Locking)
+        if _geohash_index_timestamp == 0:
+            rebuild_geohash_index()
+            _geohash_index_timestamp = time.time()
+            return
+        
+        current_version = _read_data_version()
+        if current_version > _geohash_index_data_version:
+            logging.info(f"Phát hiện data version mới cho geohash: {current_version} > {_geohash_index_data_version}")
+            rebuild_geohash_index()
+            _geohash_index_timestamp = time.time()
 
 
 @hotel_connect_api.route('/nearby', methods=['GET'])
