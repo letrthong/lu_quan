@@ -179,6 +179,23 @@ class HotelConnectApiTestCase(unittest.TestCase):
         self.assertEqual(response.status_code, 400)
         self.assertIn("error", response.json)
 
+    @patch('restful_blueprint_hotel_connect._ensure_geohash_index_fresh')
+    @patch('restful_blueprint_hotel_connect.find_nearby_fast', return_value=[
+        {"id": f"h{i}", "name": f"Hotel {i}", "distance": float(i)} for i in range(300)
+    ])
+    def test_get_nearby_hotels_boundary_limits(self, mock_find_nearby, mock_ensure_fresh):
+        # Gửi radius và limit vượt quá giới hạn tối đa
+        response = self.app.get('/api/hotelconnect/v1/nearby?lat=10.0&lng=20.0&radius=100.0&limit=500')
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.json["success"])
+        
+        # Kiểm tra xem radius đã bị cap về tối đa 50.0 ở hàm find_nearby_fast chưa
+        mock_find_nearby.assert_called_with(10.0, 20.0, 50.0)
+        
+        # Kiểm tra xem limit đã bị cap về tối đa 200 chưa
+        self.assertEqual(response.json["count"], 200)
+        self.assertEqual(len(response.json["data"]), 200)
+
     @patch('restful_blueprint_hotel_connect.get_index_stats', return_value={
         "total_cells": 10,
         "total_hotels": 100,
