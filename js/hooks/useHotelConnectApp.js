@@ -165,6 +165,7 @@ export const useHotelConnectApp = (t) => {
                     ? provinces.map(p => p.filePathId).filter(Boolean)
                     : provinces.filter(p => filterLocationIds.includes(p.id)).map(p => p.filePathId).filter(Boolean);
 
+                let hasFallbackErrors = false;
                 for (const filePath of filePathsToFetch) {
                     if (ignore) break;
                     try {
@@ -174,7 +175,12 @@ export const useHotelConnectApp = (t) => {
                         setHotels([...accumulatedHotels]);
                     } catch (error) {
                         console.error(`Lỗi khi tải dữ liệu cho file ${filePath}:`, error);
+                        hasFallbackErrors = true;
                     }
+                }
+
+                if (!ignore && accumulatedHotels.length === 0 && (bulkError || hasFallbackErrors)) {
+                    setToastMessage("Lỗi kết nối máy chủ. Không thể tải dữ liệu lữ quán.");
                 }
             }
 

@@ -35,16 +35,17 @@ const HotelAPI = {
                         // Phân loại lỗi: Nếu 404 thì chỉ là cảnh báo nhẹ (do khu vực mới chưa có file)
                         if (res.status === 404) {
                             console.warn(`Khu vực mới chưa có file dữ liệu khách sạn (404): ${path}`);
+                            return []; // Trả về mảng rỗng nếu chưa có dữ liệu cho tỉnh mới
                         } else {
                             console.error(`Lỗi ${res.status} khi tải file: ${path}`);
+                            throw new Error(`Lỗi ${res.status} khi tải file: ${path}`);
                         }
-                        return []; // Trả về mảng rỗng nếu có lỗi, để không làm hỏng toàn bộ
                     }
                     return res.json();
                 })
                 .catch(err => {
                     console.error(`Lỗi mạng khi tải ${path}:`, err);
-                    return [];
+                    throw err;
                 })
         );
 
@@ -71,14 +72,14 @@ const HotelAPI = {
             
             if (!response.ok) {
                 console.error(`Lỗi ${response.status} khi tải bulk hotels`);
-                return [];
+                throw new Error(`Lỗi ${response.status} khi tải bulk hotels`);
             }
             
             const result = await response.json();
             return result.data || [];
         } catch (err) {
             console.error('Lỗi mạng khi tải bulk hotels:', err);
-            return [];
+            throw err;
         }
     },
     
