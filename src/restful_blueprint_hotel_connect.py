@@ -605,8 +605,7 @@ _hotels_cache = {
     'data': {},           # locationId -> [hotels]
     'all_hotels': [],     # Tất cả hotels (flat list)
     'timestamp': 0,       # Thời điểm cache được build
-    'data_version': 0,    # Version của data khi build cache
-    'ttl': 300            # Cache expire sau 5 phút
+    'data_version': 0     # Version của data khi build cache
 }
 _cache_lock = threading.Lock()
 
@@ -649,13 +648,8 @@ def _is_cache_valid():
     """
     Kiểm tra cache còn hợp lệ không.
     Cache invalid khi:
-    1. Đã quá TTL (5 phút)
-    2. Data version trong file khác với version trong cache (instance khác đã thay đổi data)
+    1. Data version trong file khác với version trong cache (instance khác đã thay đổi data)
     """
-    # Check TTL trước (nhanh)
-    if time.time() - _hotels_cache['timestamp'] >= _hotels_cache['ttl']:
-        return False
-    
     # Check data version từ file config (rất nhanh - chỉ đọc 1 file nhỏ)
     current_version = _read_data_version()
     if current_version > _hotels_cache.get('data_version', 0):

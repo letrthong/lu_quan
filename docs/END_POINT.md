@@ -200,4 +200,43 @@ Xóa một schema theo id.
 }
 ```
 
+#### GET /api/hotelconnect/v1/hotels/bulk
+Tải danh sách lữ quán cho nhiều khu vực cùng lúc (hoặc toàn bộ) để tối ưu số lượng request từ client. Trả về thông tin gọn nhẹ (lightweight) không chứa mô tả chi tiết hay ảnh cơ sở.
+**Query Params:**
+- `locationIds`: Danh sách ID tỉnh/thành phố cách nhau bằng dấu phẩy (VD: `id1,id2,id3`) hoặc `"all"` để lấy tất cả.
+**Response:**
+```json
+{
+    "success": true,
+    "count": 2,
+    "locationIds": ["all"],
+    "data": [
+        {
+            "id": "hotel-uuid",
+            "name": "Tên Khách Sạn",
+            "type": "hotel",
+            "lat": 10.123,
+            "lng": 106.456,
+            "status": "approved",
+            "rating": 5,
+            "locationId": "loc-uuid"
+        }
+    ]
+}
+```
+
+#### GET /api/hotelconnect/v1/hotels/<hotel_id>/detail
+Tải thông tin chi tiết đầy đủ (mô tả dạng Base64 và ảnh đại diện) của một lữ quán cụ thể (lazy load khi người dùng click xem chi tiết).
+**Response:**
+```json
+{
+    "success": true,
+    "data": {
+        "id": "hotel-uuid",
+        "description": "TW8gdOG6oyBjaGkgdGnhur90...",
+        "image": "https://images.unsplash.com/..."
+    }
+}
+```
+
 > **Lưu ý:** Các trường `lat` và `lng` rất quan trọng để hiển thị bản đồ và tìm kiếm khách sạn theo vị trí. `filePathId` phải có định dạng: `hotel_<uuid>.json`. Khi xoá schema, các file dữ liệu khách sạn vẫn còn trên hệ thống, cần quản lý thủ công nếu muốn xoá hoàn toàn.
