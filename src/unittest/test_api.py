@@ -154,6 +154,31 @@ class HotelConnectApiTestCase(unittest.TestCase):
         self.assertEqual(response.status_code, 404)
         self.assertIn("error", response.json)
 
+    @patch('hotel_schema_service.read_schema', return_value=[
+        {"id": "loc1", HotelField.FILE_PATH_ID: "corrupted.json"},
+        {"id": "loc2", HotelField.FILE_PATH_ID: "valid.json"}
+    ])
+    @patch('os.path.exists', return_value=True)
+    def test_get_hotel_detail_handles_corrupted_file(self, mock_exists, mock_read_schema):
+        # Mock builtins.open để trả về dữ liệu lỗi cho file corrupted và dữ liệu đúng cho file valid
+        def side_effect_open(file_path, *args, **kwargs):
+            m = MagicMock()
+            if "corrupted.json" in file_path:
+                m.__enter__.return_value.read.return_value = "invalid json"
+            else:
+                m.__enter__.return_value.read.return_value = '[{"id": "h2", "name": "Hotel 2"}]'
+            return m
+
+        with patch('builtins.open', side_effect=side_effect_open):
+            # Truy vấn khách sạn h2 nằm ở file valid.json
+            response = self.app.get('/api/hotelconnect/v1/hotels/h2/detail')
+            
+            # API phải bỏ qua file corrupted đầu tiên một cách an toàn và đọc thành công file thứ hai
+            self.assertEqual(response.status_code, 200)
+            self.assertTrue(response.json["success"])
+            self.assertEqual(response.json["data"]["id"], "h2")
+            self.assertEqual(response.json["data"]["name"], "Hotel 2")
+
     @patch('restful_blueprint_hotel_connect.invalidate_hotels_cache')
     def test_invalidate_cache_endpoint(self, mock_invalidate):
         response = self.app.post('/api/hotelconnect/v1/hotels/cache/invalidate')
