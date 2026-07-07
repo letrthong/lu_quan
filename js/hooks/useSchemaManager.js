@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 
 export const useSchemaManager = (api, onToast) => {
     const [schemas, setSchemas] = useState([]);
@@ -16,6 +16,7 @@ export const useSchemaManager = (api, onToast) => {
     });
     const [pickerPos, setPickerPos] = useState({ lat: 14.0583, lng: 108.2772 });
     const [isLocating, setIsLocating] = useState(false);
+    const locationAttempts = useRef(0);
 
     const fetchSchemas = useCallback(async () => {
         try {
@@ -65,6 +66,9 @@ export const useSchemaManager = (api, onToast) => {
         }
 
         setIsLocating(true);
+        const maxAge = locationAttempts.current === 0 ? 30000 : 5000;
+        locationAttempts.current += 1;
+
         navigator.geolocation.getCurrentPosition(
             (position) => {
                 handlePickerChange({ lat: position.coords.latitude, lng: position.coords.longitude });
@@ -78,7 +82,7 @@ export const useSchemaManager = (api, onToast) => {
                 if (error.code === 1) errMsg = "Bạn đã từ chối quyền truy cập vị trí.";
                 onToast(errMsg);
             },
-            { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+            { enableHighAccuracy: false, timeout: 10000, maximumAge: maxAge }
         );
     };
 

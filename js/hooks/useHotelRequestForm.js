@@ -15,6 +15,7 @@ export const useHotelRequestForm = (provinces, onClose, onSubmitSuccess, onToast
     const [websiteUrl, setWebsiteUrl] = useState("");
     const [imageBase64, setImageBase64] = useState("");
     const [isLocating, setIsLocating] = useState(false);
+    const locationAttempts = useRef(0);
 
     const [isProvinceOpen, setIsProvinceOpen] = useState(false);
     const [provinceSearchQuery, setProvinceSearchQuery] = useState("");
@@ -77,6 +78,9 @@ export const useHotelRequestForm = (provinces, onClose, onSubmitSuccess, onToast
         }
 
         setIsLocating(true);
+        const maxAge = locationAttempts.current === 0 ? 30000 : 5000;
+        locationAttempts.current += 1;
+
         navigator.geolocation.getCurrentPosition(
             (position) => {
                 setPickerPos({ lat: position.coords.latitude, lng: position.coords.longitude });
@@ -90,7 +94,7 @@ export const useHotelRequestForm = (provinces, onClose, onSubmitSuccess, onToast
                 if (error.code === 1) errMsg = "Bạn đã từ chối quyền truy cập vị trí.";
                 onToast(errMsg);
             },
-            { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+            { enableHighAccuracy: false, timeout: 10000, maximumAge: maxAge }
         );
     };
 

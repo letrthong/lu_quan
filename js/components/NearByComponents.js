@@ -30,7 +30,16 @@ const NearByComponents = ({ hotels, onSelectHotel, setViewMode, isActive, onToas
         setError(null);
 
         let watchId;
-        if ("geolocation" in navigator) {
+        
+        const startWatching = (initialLoc = null) => {
+            if (initialLoc) {
+                setUserLocation(initialLoc);
+                setIsLoading(false);
+                setError(null);
+                if (onLocationUpdate) onLocationUpdate(initialLoc);
+            }
+            
+            // Lần thứ 2 (hoặc watch liên tục) sử dụng maximumAge: 5000 để đảm bảo cập nhật vị trí mới nhất
             watchId = navigator.geolocation.watchPosition(
                 (position) => {
                     const newLoc = {
@@ -43,27 +52,33 @@ const NearByComponents = ({ hotels, onSelectHotel, setViewMode, isActive, onToas
                     if (onLocationUpdate) onLocationUpdate(newLoc);
                 },
                 (err) => {
-                    console.error("Error getting location:", err);
-                    let errorMessage;
-                    switch(err.code) {
-                        case err.PERMISSION_DENIED:
-                            errorMessage = "Bạn đã từ chối quyền truy cập vị trí. Vui lòng vào cài đặt trình duyệt để cấp quyền.";
-                            break;
-                        case err.POSITION_UNAVAILABLE:
-                            errorMessage = "Không thể xác định vị trí của bạn. Vui lòng thử lại sau.";
-                            break;
-                        case err.TIMEOUT:
-                            errorMessage = "Yêu cầu vị trí đã hết hạn. Vui lòng thử lại.";
-                            break;
-                        default:
-                            errorMessage = "Không thể lấy vị trí của bạn. Vui lòng bật định vị GPS và thử lại.";
-                            break;
+                    console.error("Lỗi cập nhật vị trí watchPosition:", err);
+                    if (!initialLoc) {
+                        let errorMessage = "Không thể xác định vị trí của bạn. Vui lòng thử lại.";
+                        setError(errorMessage);
+                        if (onToast) onToast(errorMessage);
+                        setIsLoading(false);
                     }
-                    setError(errorMessage);
-                    if (onToast) onToast(errorMessage);
-                    setIsLoading(false);
                 },
-                { enableHighAccuracy: true, timeout: 10000, maximumAge: 5000 }
+                { enableHighAccuracy: false, timeout: 10000, maximumAge: 5000 }
+            );
+        };
+
+        if ("geolocation" in navigator) {
+            // Lần đầu tiên lấy vị trí nhanh sử dụng cached location tối đa 30 giây (maximumAge: 30000)
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    const firstLoc = {
+                        lat: position.coords.latitude,
+                        lng: position.coords.longitude
+                    };
+                    startWatching(firstLoc);
+                },
+                (err) => {
+                    console.warn("Lấy vị trí nhanh qua cache thất bại, kích hoạt watchPosition trực tiếp:", err);
+                    startWatching(null);
+                },
+                { enableHighAccuracy: false, timeout: 5000, maximumAge: 30000 }
             );
         } else {
             setError("Trình duyệt của bạn không hỗ trợ GPS.");

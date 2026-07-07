@@ -40,6 +40,7 @@ export const useHotelEditForm = (hotel, provinces, onClose, onSaveSuccess, onToa
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [apiError, setApiError] = useState(null);
     const [selectedType, setSelectedType] = useState(hotel.type || "");
+    const locationAttempts = useRef(0);
 
     const decodedWebsite = useMemo(() => decodeBase64(fullHotel.website), [fullHotel.website]);
     const decodedAddress = useMemo(() => decodeBase64(fullHotel.address), [fullHotel.address]);
@@ -108,6 +109,9 @@ export const useHotelEditForm = (hotel, provinces, onClose, onSaveSuccess, onToa
         }
 
         setIsLocating(true);
+        const maxAge = locationAttempts.current === 0 ? 30000 : 5000;
+        locationAttempts.current += 1;
+
         navigator.geolocation.getCurrentPosition(
             (position) => {
                 setPickerPos({ lat: position.coords.latitude, lng: position.coords.longitude });
@@ -121,7 +125,7 @@ export const useHotelEditForm = (hotel, provinces, onClose, onSaveSuccess, onToa
                 if (error.code === 1) errMsg = "Bạn đã từ chối quyền truy cập vị trí.";
                 onToast(errMsg);
             },
-            { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+            { enableHighAccuracy: false, timeout: 10000, maximumAge: maxAge }
         );
     };
 
