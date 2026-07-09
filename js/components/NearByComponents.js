@@ -11,7 +11,7 @@ const NearByComponents = ({ hotels, onSelectHotel, setViewMode, isActive, onToas
     const [retries, setRetries] = useState(0);
     const [radius, setRadius] = useState(() => {
         const savedRadius = localStorage.getItem('luquan_nearby_radius');
-        return savedRadius ? Number(savedRadius) : 2;
+        return savedRadius ? Number(savedRadius) : 5;
     });
     const mapRef = useRef(null);
     const mapInstance = useRef(null);
@@ -109,7 +109,7 @@ const NearByComponents = ({ hotels, onSelectHotel, setViewMode, isActive, onToas
         if (!isActive || !userLocation || !mapRef.current) return;
 
         if (!mapInstance.current) {
-            mapInstance.current = window.L.map(mapRef.current, { zoomControl: false }).setView([userLocation.lat, userLocation.lng], 14);
+            mapInstance.current = window.L.map(mapRef.current, { zoomControl: false }).setView([userLocation.lat, userLocation.lng], 12);
             window.L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                 attribution: '&copy; OpenStreetMap'
             }).addTo(mapInstance.current);

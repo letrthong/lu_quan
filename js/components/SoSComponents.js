@@ -176,7 +176,7 @@ const SoSComponents = ({ setViewMode, isActive, onToast }) => {
         if (!isActive || !userLocation || !mapRef.current) return;
 
         if (!mapInstance.current) {
-            mapInstance.current = window.L.map(mapRef.current, { zoomControl: false }).setView([userLocation.lat, userLocation.lng], 14);
+            mapInstance.current = window.L.map(mapRef.current, { zoomControl: false }).setView([userLocation.lat, userLocation.lng], 12);
             window.L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                 attribution: '&copy; OpenStreetMap'
             }).addTo(mapInstance.current);
@@ -406,7 +406,7 @@ const SoSComponents = ({ setViewMode, isActive, onToast }) => {
                 </div>
 
                 {/* Floating SOS button */}
-                <div className="absolute bottom-44 right-4 z-[1000] pointer-events-none">
+                <div className={`absolute right-4 z-[1000] pointer-events-none transition-all duration-300 ${selectedSOS ? 'bottom-[24rem]' : 'bottom-44'}`}>
                     <button 
                         onClick={() => setIsSOSModalOpen(true)}
                         className="w-12 h-12 bg-red-600 text-white rounded-full flex flex-col items-center justify-center shadow-[0_8px_30px_rgba(220,38,38,0.4)] border border-red-500 pointer-events-auto cursor-pointer hover:bg-red-700 active:scale-95 transition-all group animate-pulse-soft"
@@ -418,7 +418,7 @@ const SoSComponents = ({ setViewMode, isActive, onToast }) => {
                 </div>
 
                 {/* Centering button */}
-                <div className="absolute bottom-28 right-4 z-[1000] pointer-events-none">
+                <div className={`absolute right-4 z-[1000] pointer-events-none transition-all duration-300 ${selectedSOS ? 'bottom-[20rem]' : 'bottom-28'}`}>
                     <button 
                         onClick={() => {
                             setSearchLocation(null);
@@ -498,10 +498,18 @@ const SoSComponents = ({ setViewMode, isActive, onToast }) => {
 
                 {/* SOS emergency submit request form modal dialog */}
                 {isSOSModalOpen && (
-                    <div className="absolute inset-0 bg-stone-900/60 backdrop-blur-sm z-[2000] flex items-end sm:items-center justify-center p-4 pointer-events-auto">
+                    <div 
+                        onClick={(e) => e.stopPropagation()}
+                        onMouseDown={(e) => e.stopPropagation()}
+                        onTouchStart={(e) => e.stopPropagation()}
+                        className="absolute inset-0 bg-stone-900/60 backdrop-blur-sm z-[2000] flex items-center justify-center p-4 pointer-events-auto"
+                    >
                         <form 
                             onSubmit={handleSOSSubmit}
-                            className="bg-white w-full max-w-md rounded-t-3xl sm:rounded-3xl shadow-2xl border border-stone-200 p-6 flex flex-col gap-4 overflow-y-auto max-h-[85vh]"
+                            onClick={(e) => e.stopPropagation()}
+                            onMouseDown={(e) => e.stopPropagation()}
+                            onTouchStart={(e) => e.stopPropagation()}
+                            className="bg-white w-full max-w-md rounded-3xl shadow-2xl border border-stone-200 p-6 flex flex-col gap-4 overflow-y-auto max-h-[85vh]"
                         >
                             <div className="flex justify-between items-center border-b border-stone-100 pb-3">
                                 <h3 className="text-base font-black text-red-600 uppercase tracking-wide flex items-center gap-2">
