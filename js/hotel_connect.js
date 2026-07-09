@@ -11,6 +11,8 @@ import HotelEditForm from './components/HotelEditForm';
 import ReportManager from './components/ReportManager';
 import HotelDetail from './components/HotelDetail';
 import NearByComponents from './components/NearByComponents';
+import SoSComponents from './components/SoSComponents';
+import SosAdminManager from './components/SosAdminManager';
 import RegionMultiSelect from './components/RegionMultiSelect';
 import TypeMultiSelect from './components/TypeMultiSelect';
 import { HOTEL_TYPES, getIconForHotelType, getReasonText, getTypeLabel } from './constants';
@@ -91,6 +93,8 @@ const MainApp = () => {
         hideHotel,
         deleteHotel,
         refreshReports,
+        refreshSos,
+        sosRequests,
         formatDate,
         handleCloseHotelDetail,
         filteredHotels,
@@ -107,6 +111,7 @@ const MainApp = () => {
                 pendingRequestsCount={pendingRequests.length}
                 pendingReviewHotelsCount={pendingReviewHotels.length}
                 reportsCount={reports.length}
+                sosRequestsCount={sosRequests.filter(s => s.status === 'pending' || s.status === 'processing').length}
                 onShowRequestForm={() => setShowRequestForm(true)}
                 onLogoutAdmin={() => setIsAdmin(false)}
                 onShowAdminLogin={() => setShowAdminLogin(true)}
@@ -166,6 +171,7 @@ const MainApp = () => {
                                 pendingRequestsCount={pendingRequests.length}
                                 pendingReviewHotelsCount={pendingReviewHotels.length}
                                 reportsCount={reports.length}
+                                sosRequestsCount={sosRequests.filter(s => s.status === 'pending' || s.status === 'processing').length}
                                 isMobile={true}
                             />
                         )}
@@ -174,6 +180,8 @@ const MainApp = () => {
                     <div className="flex-1 overflow-y-auto bg-stone-50 scrollbar-hide pb-24">
                         {isAdmin && adminTab === 'reports' ? (
                             <ReportManager reports={reports} setFilterCity={(id) => setFilterLocationIds([id])} onToast={setToastMessage} onReportDeleted={refreshReports} onProcessReport={onProcessReport} />
+                        ) : isAdmin && adminTab === 'sos' ? (
+                            <SosAdminManager sosRequests={sosRequests} refreshSos={refreshSos} onToast={setToastMessage} />
                         ) : (
                             <div className="p-3 space-y-3">
                                 {isLoading ? (
@@ -298,6 +306,18 @@ const MainApp = () => {
                     />
                 </div>
 
+                {/* SOS Emergency Rescue View: Mobile Only */}
+                <div className={`
+                    absolute md:hidden z-20 w-full bg-white shadow-2xl transition-transform duration-300 h-full flex flex-col
+                    ${viewMode === 'sos' ? 'translate-x-0' : 'translate-x-full'}
+                `}>
+                    <SoSComponents 
+                        setViewMode={setViewMode}
+                        isActive={viewMode === 'sos'}
+                        onToast={setToastMessage}
+                    />
+                </div>
+
                 {/* View Switcher: Mobile Only */}
                 <div className="md:hidden absolute bottom-0 left-0 right-0 z-40 flex bg-white border-t border-stone-200 shadow-[0_-4px_20px_rgba(0,0,0,0.05)] pb-safe">
                     <button 
@@ -326,6 +346,15 @@ const MainApp = () => {
                             <Icon name="navigation" size={20} />
                         </div>
                         <span className="text-[10px] font-black uppercase tracking-widest">Gần Đây</span>
+                    </button>
+                    <button 
+                        onClick={() => setViewMode('sos')}
+                        className={`flex-1 py-3 flex flex-col items-center justify-center gap-1 transition-all active:scale-95 ${viewMode === 'sos' ? 'text-red-600' : 'text-stone-400 hover:text-stone-600'}`}
+                    >
+                        <div className={`transition-transform duration-300 ${viewMode === 'sos' ? '-translate-y-1 scale-110 animate-pulse' : 'translate-y-0 scale-100'}`}>
+                            <Icon name="alert-triangle" size={20} className={viewMode === 'sos' ? 'text-red-600' : ''} />
+                        </div>
+                        <span className="text-[10px] font-black uppercase tracking-widest">Cứu Hộ</span>
                     </button>
                 </div>
 

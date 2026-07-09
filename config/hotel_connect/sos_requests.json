@@ -1,0 +1,16 @@
+[
+    {
+        "id": "33d0422f-d5b4-4a4c-90b2-320f552af96a",
+        "name": "Name",
+        "phone": "111",
+        "lat": 10.0,
+        "lng": 20.0,
+        "message": "message",
+        "urgency": "high",
+        "status": "pending",
+        "createdAt": "2026-07-09T15:46:37.038064+00:00",
+        "updatedAt": "2026-07-09T15:46:37.038064+00:00",
+        "reporterIp": "127.0.0.1",
+        "deviceId": "dev1"
+    }
+]

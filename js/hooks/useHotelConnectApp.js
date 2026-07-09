@@ -44,6 +44,7 @@ export const useHotelConnectApp = (t) => {
     const [adminTab, setAdminTab] = useState('approved');
     const [pendingReviewHotels, setPendingReviewHotels] = useState([]);
     const [reports, setReports] = useState([]);
+    const [sosRequests, setSosRequests] = useState([]);
     const [editingHotel, setEditingHotel] = useState(null);
     const [toastMessage, setToastMessage] = useState("");
     const [reviewConfirm, setReviewConfirm] = useState(null);
@@ -109,6 +110,9 @@ export const useHotelConnectApp = (t) => {
                     console.error("Lỗi khi tải danh sách báo cáo:", err);
                     setToastMessage(err.message || "Không thể tải báo cáo.");
                 });
+            HotelAPI.fetchSosRequests(true)
+                .then(data => setSosRequests(data))
+                .catch(err => console.error("Lỗi khi tải danh sách SOS cứu hộ:", err));
             Promise.all([
                 HotelAPI.fetchHotelsByStatus('pending_review'),
                 HotelAPI.fetchHotelsByStatus('reported')
@@ -528,6 +532,14 @@ export const useHotelConnectApp = (t) => {
         }
     };
 
+    const refreshSos = () => {
+        if (isAdmin) {
+            HotelAPI.fetchSosRequests(true)
+                .then(data => setSosRequests(data))
+                .catch(err => console.error("Lỗi tải lại SOS cứu hộ:", err));
+        }
+    };
+
     const formatDate = (dateStr) => {
         if (!dateStr) return "Chưa rõ";
         const [year, month, day] = dateStr.split('-');
@@ -609,6 +621,8 @@ export const useHotelConnectApp = (t) => {
         hideHotel,
         deleteHotel,
         refreshReports,
+        refreshSos,
+        sosRequests,
         formatDate,
         handleCloseHotelDetail,
         filteredHotels,

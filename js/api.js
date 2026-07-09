@@ -315,6 +315,55 @@ const HotelAPI = {
             console.error(`Lỗi mạng khi tải chi tiết hotel ${hotelId}:`, err);
             return null;
         }
+    },
+
+    // Lấy danh sách cứu hộ SOS
+    fetchSosRequests: async (includeHistory = false) => {
+        const response = await fetch(`${HotelAPI.baseUrl}/api/hotelconnect/v1/sos?include_history=${includeHistory}`);
+        if (!response.ok) {
+            throw new Error("Lỗi khi tải danh sách yêu cầu cứu hộ SOS");
+        }
+        return await response.json();
+    },
+
+    // Gửi yêu cầu cứu hộ SOS mới
+    submitSosRequest: async (sosData) => {
+        const response = await fetch(`${HotelAPI.baseUrl}/api/hotelconnect/v1/sos`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(sosData)
+        });
+        if (!response.ok) {
+            const err = await response.json().catch(() => ({ error: "Lỗi không xác định" }));
+            throw new Error(err.error || "Lỗi khi gửi yêu cầu cứu hộ SOS");
+        }
+        return await response.json();
+    },
+
+    // Cập nhật trạng thái yêu cầu SOS (ví dụ: resolved)
+    updateSosStatus: async (sosId, status) => {
+        const response = await fetch(`${HotelAPI.baseUrl}/api/hotelconnect/v1/sos/${sosId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ status })
+        });
+        if (!response.ok) {
+            const err = await response.json().catch(() => ({ error: "Lỗi không xác định" }));
+            throw new Error(err.error || "Lỗi khi cập nhật trạng thái cứu hộ");
+        }
+        return await response.json();
+    },
+
+    // Xóa yêu cầu SOS
+    deleteSosRequest: async (sosId) => {
+        const response = await fetch(`${HotelAPI.baseUrl}/api/hotelconnect/v1/sos/${sosId}`, {
+            method: 'DELETE'
+        });
+        if (!response.ok) {
+            const err = await response.json().catch(() => ({ error: "Lỗi không xác định" }));
+            throw new Error(err.error || "Lỗi khi xóa yêu cầu cứu hộ");
+        }
+        return await response.json();
     }
 };
 

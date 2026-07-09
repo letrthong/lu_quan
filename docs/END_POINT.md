@@ -239,4 +239,105 @@ Tải thông tin chi tiết đầy đủ (mô tả dạng Base64 và ảnh đạ
 }
 ```
 
+#### POST /api/hotelconnect/v1/sos
+Gửi yêu cầu cứu hộ SOS khẩn cấp từ người dân (tự động kèm tọa độ GPS).
+**Cơ chế chống spam:**
+- **Không trùng lặp**: Nếu thiết bị đã có yêu cầu SOS đang chờ xử lý (`pending` hoặc `processing`), yêu cầu gửi mới sẽ cập nhật đè lên yêu cầu cũ (cập nhật tọa độ và nội dung) mà không tạo mới bản ghi.
+- **Giới hạn 24 giờ**: Nếu thiết bị đã gửi yêu cầu và được đánh dấu hoàn thành (`resolved` hoặc `cancelled`) trong 24 giờ qua, hệ thống sẽ từ chối và phản hồi lỗi `400 Bad Request`.
+- **Xác thực Trình duyệt (Browser Headers Verification)**: Hệ thống kiểm tra các Header đặc trưng của trình duyệt thật. Các yêu cầu thiếu `Origin` hoặc `Referer`, hoặc sử dụng các tác nhân tự động (`User-Agent` chứa `python`, `curl`, `wget`, `postman`, `httpclient`, `urllib`, `scrapy`...) sẽ bị từ chối với lỗi `403 Forbidden`.
+
+**Request:**
+```json
+{
+    "name": "Nguyễn Văn A",
+    "phone": "0912345678",
+    "lat": 21.0285,
+    "lng": 105.8542,
+    "message": "Nước dâng cao, nhà có 3 người cần di tản",
+    "urgency": "high",
+    "deviceId": "client-browser-uuid-string"
+}
+```
+**Response (Thành công mới hoặc cập nhật):**
+```json
+{
+    "success": true,
+    "message": "Gửi yêu cầu cứu hộ SOS thành công",
+    "data": {
+        "id": "sos-uuid-string",
+        "name": "Nguyễn Văn A",
+        "phone": "0912345678",
+        "lat": 21.0285,
+        "lng": 105.8542,
+        "message": "Nước dâng cao, nhà có 3 người cần di tản",
+        "urgency": "high",
+        "status": "pending",
+        "createdAt": "2026-07-09T15:17:00Z",
+        "updatedAt": "2026-07-09T15:17:00Z",
+        "reporterIp": "127.0.0.1",
+        "deviceId": "client-browser-uuid-string"
+    }
+}
+```
+
+**Response (Bị giới hạn 24h - Lỗi 400 Bad Request):**
+```json
+{
+    "error": "Thiết bị này đã gửi yêu cầu cứu nạn trong vòng 24 giờ qua. Yêu cầu trước đó đã được giải quyết hoặc lưu trữ."
+}
+```
+
+#### GET /api/hotelconnect/v1/sos
+Lấy danh sách toàn bộ các yêu cầu cứu hộ SOS đang hoạt động.
+**Response:**
+```json
+[
+    {
+        "id": "sos-uuid-string",
+        "name": "Nguyễn Văn A",
+        "phone": "0912345678",
+        "lat": 21.0285,
+        "lng": 105.8542,
+        "message": "Nước dâng cao, nhà có 3 người cần di tản",
+        "urgency": "high",
+        "status": "pending",
+        "createdAt": "2026-07-09T15:17:00Z",
+        "updatedAt": "2026-07-09T15:17:00Z",
+        "reporterIp": "127.0.0.1"
+    }
+]
+```
+
+#### PUT /api/hotelconnect/v1/sos/<sos_id>
+Cập nhật trạng thái của một yêu cầu cứu hộ (ví dụ: đánh dấu là đã cứu nạn thành công).
+**Request:**
+```json
+{
+    "status": "resolved"
+}
+```
+**Response:**
+```json
+{
+    "success": true,
+    "message": "Cập nhật trạng thái thành công sang resolved",
+    "data": {
+        "id": "sos-uuid-string",
+        "status": "resolved",
+        "updatedAt": "2026-07-09T15:20:00Z"
+        /* ... other fields ... */
+    }
+}
+```
+
+#### DELETE /api/hotelconnect/v1/sos/<sos_id>
+Xóa yêu cầu cứu hộ khỏi danh sách lưu trữ.
+**Response:**
+```json
+{
+    "success": true,
+    "message": "Xóa yêu cầu cứu hộ thành công"
+}
+```
+
 > **Lưu ý:** Các trường `lat` và `lng` rất quan trọng để hiển thị bản đồ và tìm kiếm khách sạn theo vị trí. `filePathId` phải có định dạng: `hotel_<uuid>.json`. Khi xoá schema, các file dữ liệu khách sạn vẫn còn trên hệ thống, cần quản lý thủ công nếu muốn xoá hoàn toàn.

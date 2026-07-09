@@ -87,3 +87,41 @@ test('api - fetchPendingRequests error response', async (t) => {
         global.fetch = originalFetch;
     }
 });
+
+test('api - fetchSosRequests success', async (t) => {
+    const originalFetch = global.fetch;
+    global.fetch = async (url) => {
+        assert.ok(url.includes('/api/hotelconnect/v1/sos'));
+        return {
+            ok: true,
+            json: async () => [{ id: "sos1", name: "User A" }]
+        };
+    };
+    try {
+        const res = await HotelAPI.fetchSosRequests();
+        assert.deepStrictEqual(res, [{ id: "sos1", name: "User A" }]);
+    } finally {
+        global.fetch = originalFetch;
+    }
+});
+
+test('api - submitSosRequest success', async (t) => {
+    const originalFetch = global.fetch;
+    const body = { name: "User A", phone: "123", lat: 10, lng: 20, message: "help" };
+    global.fetch = async (url, options) => {
+        assert.ok(url.includes('/api/hotelconnect/v1/sos'));
+        assert.strictEqual(options.method, 'POST');
+        assert.deepStrictEqual(JSON.parse(options.body), body);
+        return {
+            ok: true,
+            json: async () => ({ success: true })
+        };
+    };
+    try {
+        const res = await HotelAPI.submitSosRequest(body);
+        assert.deepStrictEqual(res, { success: true });
+    } finally {
+        global.fetch = originalFetch;
+    }
+});
+

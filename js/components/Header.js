@@ -11,6 +11,7 @@ const Header = ({
     pendingRequestsCount,
     pendingReviewHotelsCount,
     reportsCount,
+    sosRequestsCount,
     onShowRequestForm,
     onLogoutAdmin,
     onShowAdminLogin
@@ -43,7 +44,7 @@ const Header = ({
                     <option value="zh" className="text-stone-800">{t('lang_zh')}</option>
                     <option value="ko" className="text-stone-800">{t('lang_ko')}</option>
                 </select>
-
+ 
                 {isAdmin ? (
                     <>
                         <button onClick={onShowSchemaManager} className="flex items-center gap-1 bg-blue-600 hover:bg-blue-700 px-2 py-1.5 md:px-3 md:py-2 rounded-lg transition-all text-[9px] md:text-xs font-black uppercase tracking-wider shadow-sm text-white mr-1 sm:mr-0">
@@ -55,6 +56,7 @@ const Header = ({
                             pendingRequestsCount={pendingRequestsCount}
                             pendingReviewHotelsCount={pendingReviewHotelsCount}
                             reportsCount={reportsCount}
+                            sosRequestsCount={sosRequestsCount}
                             isMobile={false}
                         />
                     </>

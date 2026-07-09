@@ -6,6 +6,7 @@ const AdminTabs = ({
     pendingRequestsCount,
     pendingReviewHotelsCount,
     reportsCount,
+    sosRequestsCount,
     isMobile = false
 }) => {
     const tabs = [
@@ -14,7 +15,8 @@ const AdminTabs = ({
         { id: 'inactive', label: 'Đã Ẩn', desktopActiveClass: 'bg-stone-500 text-white shadow', mobileActiveClass: 'bg-stone-500 text-white shadow' },
         { id: 'pending', label: 'Chờ Duyệt', count: pendingRequestsCount, desktopActiveClass: 'bg-white text-stone-900 shadow', mobileActiveClass: 'bg-orange-700 text-white shadow' },
         { id: 'pending_review', label: 'Cần Review', count: pendingReviewHotelsCount, desktopActiveClass: 'bg-purple-600 text-white shadow', mobileActiveClass: 'bg-purple-700 text-white shadow' },
-        { id: 'reports', label: 'Báo cáo', count: reportsCount, desktopActiveClass: 'bg-white text-stone-900 shadow', mobileActiveClass: 'bg-red-700 text-white shadow' }
+        { id: 'reports', label: 'Báo cáo', count: reportsCount, desktopActiveClass: 'bg-white text-stone-900 shadow', mobileActiveClass: 'bg-red-700 text-white shadow' },
+        { id: 'sos', label: 'SOS Cứu hộ', count: sosRequestsCount, desktopActiveClass: 'bg-red-600 text-white shadow', mobileActiveClass: 'bg-red-600 text-white shadow' }
     ];
 
     if (isMobile) {
