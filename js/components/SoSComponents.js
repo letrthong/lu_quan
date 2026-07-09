@@ -374,7 +374,7 @@ const SoSComponents = ({ setViewMode, isActive, onToast }) => {
     }
 
     return (
-        <div className="flex flex-col h-full bg-stone-50 overflow-hidden relative">
+        <div className="flex flex-col h-full bg-stone-50 overflow-hidden relative pb-[60px]">
             <div className="flex-1 w-full h-full relative z-0 pb-safe">
                 <div ref={mapRef} className="w-full h-full bg-stone-200"></div>
                 
