@@ -525,8 +525,12 @@ const SoSComponents = ({ setViewMode, isActive, onToast }) => {
                                 </button>
                             </div>
 
-                            <div className="bg-red-50 text-red-700 text-[11px] p-3.5 rounded-2xl border border-red-100 leading-relaxed font-semibold">
-                                🚨 <strong>Lưu ý:</strong> Vui lòng cung cấp chính xác tên và số điện thoại để lực lượng cứu hộ có thể liên lạc ngay lập tức. Hệ thống sẽ tự động gửi tọa độ GPS hiện tại của bạn.
+                            <div className="bg-amber-50 text-amber-900 text-[10px] p-3.5 rounded-2xl border border-amber-200 leading-relaxed font-semibold space-y-1.5">
+                                <p className="text-red-600 font-black uppercase tracking-wider flex items-center gap-1.5 text-[11px] mb-1">
+                                    ⚠️ KHUYẾN CÁO KHẨN CẤP:
+                                </p>
+                                <p>1. Trong trường hợp nguy hiểm đe dọa tính mạng, <strong>HÃY GỌI NGAY đường dây cứu nạn quốc gia (112) hoặc chính quyền địa phương</strong>. Bản đồ này là kênh thông tin tự nguyện của cộng đồng, không thể thay thế lực lượng cứu nạn chính quy.</p>
+                                <p>2. Vui lòng điền đúng Tên, SĐT. Hệ thống sẽ tự động đính kèm GPS của bạn. Hãy giữ điện thoại hoạt động và tìm nơi cao ráo an toàn nếu nước tiếp tục dâng.</p>
                             </div>
 
                             <div className="space-y-3">
