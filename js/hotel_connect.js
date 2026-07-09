@@ -1,4 +1,4 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useState } from 'react';
 import ReactDOM from 'react-dom/client';
 import Icon from './components/Icon';
 import Header from './components/Header';
@@ -100,6 +100,7 @@ const MainApp = () => {
         filteredHotels,
         handleShare
     } = useHotelConnectApp(t);
+    const [isSOSModalOpen, setIsSOSModalOpen] = useState(false);
 
     return (
         <div className="absolute inset-0 flex flex-col bg-stone-50 text-stone-900 overflow-hidden font-sans select-none">
@@ -308,13 +309,16 @@ const MainApp = () => {
 
                 {/* SOS Emergency Rescue View: Mobile Only */}
                 <div className={`
-                    absolute md:hidden z-20 w-full bg-white shadow-2xl transition-transform duration-300 h-full flex flex-col
+                    absolute md:hidden w-full bg-white shadow-2xl transition-transform duration-300 h-full flex flex-col
                     ${viewMode === 'sos' ? 'translate-x-0' : 'translate-x-full'}
+                    ${isSOSModalOpen ? 'z-50' : 'z-20'}
                 `}>
                     <SoSComponents 
                         setViewMode={setViewMode}
                         isActive={viewMode === 'sos'}
                         onToast={setToastMessage}
+                        isSOSModalOpen={isSOSModalOpen}
+                        setIsSOSModalOpen={setIsSOSModalOpen}
                     />
                 </div>
 

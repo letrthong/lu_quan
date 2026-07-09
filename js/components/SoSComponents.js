@@ -50,7 +50,7 @@ const getTimeAgo = (dateStr) => {
     return `${hrs} giờ trước`;
 };
 
-const SoSComponents = ({ setViewMode, isActive, onToast }) => {
+const SoSComponents = ({ setViewMode, isActive, onToast, isSOSModalOpen, setIsSOSModalOpen }) => {
     const [userLocation, setUserLocation] = useState(null);
     const [searchLocation, setSearchLocation] = useState(null);
     const [error, setError] = useState(null);
@@ -62,7 +62,6 @@ const SoSComponents = ({ setViewMode, isActive, onToast }) => {
     });
 
     const [sosRequests, setSosRequests] = useState([]);
-    const [isSOSModalOpen, setIsSOSModalOpen] = useState(false);
     const [selectedSOS, setSelectedSOS] = useState(null);
     const [sosForm, setSosForm] = useState({ name: '', phone: '', message: '', urgency: 'medium', image: null });
     const [isSubmittingSOS, setIsSubmittingSOS] = useState(false);
@@ -374,8 +373,8 @@ const SoSComponents = ({ setViewMode, isActive, onToast }) => {
     }
 
     return (
-        <div className="flex flex-col h-full bg-stone-50 overflow-hidden relative pb-[60px]">
-            <div className="flex-1 w-full h-full relative z-0 pb-safe">
+        <div className="flex flex-col h-full bg-stone-50 overflow-hidden relative">
+            <div className="flex-1 w-full h-full relative z-0 pb-safe pb-[60px]">
                 <div ref={mapRef} className="w-full h-full bg-stone-200"></div>
                 
                 {/* Radius filter area selector */}
