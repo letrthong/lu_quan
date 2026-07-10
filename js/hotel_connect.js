@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useState, useEffect } from 'react';
 import ReactDOM from 'react-dom/client';
 import Icon from './components/Icon';
 import Header from './components/Header';
@@ -101,6 +101,24 @@ const MainApp = () => {
         handleShare
     } = useHotelConnectApp(t);
     const [isSOSModalOpen, setIsSOSModalOpen] = useState(false);
+    const [selectedSOS, setSelectedSOS] = useState(null);
+
+    useEffect(() => {
+        const urlParams = new URLSearchParams(window.location.search);
+        const urlSosId = urlParams.get('sos');
+        if (urlSosId && sosRequests && sosRequests.length > 0) {
+            const targetSos = sosRequests.find(s => s.id === urlSosId);
+            if (targetSos) {
+                setViewMode('sos');
+                setSelectedSOS(targetSos);
+                
+                // Xóa query parameter khỏi URL để tránh bị nhảy tab khi người dùng refresh hoặc điều hướng
+                const cleanSearch = window.location.search.replace(/sos=[^&]+&?/, '').replace(/[&?]$/, '');
+                const newUrl = window.location.pathname + cleanSearch;
+                window.history.replaceState({}, '', newUrl);
+            }
+        }
+    }, [sosRequests]);
 
     return (
         <div className="absolute inset-0 flex flex-col bg-stone-50 text-stone-900 overflow-hidden font-sans select-none">
@@ -182,7 +200,7 @@ const MainApp = () => {
                         {isAdmin && adminTab === 'reports' ? (
                             <ReportManager reports={reports} setFilterCity={(id) => setFilterLocationIds([id])} onToast={setToastMessage} onReportDeleted={refreshReports} onProcessReport={onProcessReport} />
                         ) : isAdmin && adminTab === 'sos' ? (
-                            <SosAdminManager sosRequests={sosRequests} refreshSos={refreshSos} onToast={setToastMessage} />
+                            <SosAdminManager sosRequests={sosRequests} refreshSos={refreshSos} onToast={setToastMessage} onSelectSOS={setSelectedSOS} />
                         ) : (
                             <div className="p-3 space-y-3">
                                 {isLoading ? (
@@ -288,7 +306,20 @@ const MainApp = () => {
                     ${viewMode === 'map' ? 'translate-x-0' : 'translate-x-full md:translate-x-0'}
                 `}>
                     <div className="w-full h-full relative z-0">
-                        <MainLeafletMap hotels={filteredHotels} selectedHotel={selectedHotel} onSelectHotel={setSelectedHotel} filterCity={filterLocationIds.includes("all") || filterLocationIds.length === 0 ? null : filterLocationIds} viewMode={viewMode} />
+                        {isAdmin && adminTab === 'sos' ? (
+                            <SoSComponents 
+                                setViewMode={setViewMode}
+                                isActive={true}
+                                onToast={setToastMessage}
+                                isSOSModalOpen={isSOSModalOpen}
+                                setIsSOSModalOpen={setIsSOSModalOpen}
+                                isAdmin={isAdmin}
+                                selectedSOS={selectedSOS}
+                                onSelectSOS={setSelectedSOS}
+                            />
+                        ) : (
+                            <MainLeafletMap hotels={filteredHotels} selectedHotel={selectedHotel} onSelectHotel={setSelectedHotel} filterCity={filterLocationIds.includes("all") || filterLocationIds.length === 0 ? null : filterLocationIds} viewMode={viewMode} />
+                        )}
                     </div>
                 </div>
 
