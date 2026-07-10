@@ -12,6 +12,9 @@
 - `SOS_FILE_PATH = "/app/config/hotel_connect/sos_requests.json"`
     - File lưu trữ các yêu cầu cứu hộ khẩn cấp SOS từ người dân bão lũ.
 
+- `SOS_COMMENTS_FILE_PATH = "/app/config/hotel_connect/sos_comments.json"`
+    - File lưu trữ các bình luận/cập nhật tình hình của các ca cứu hộ SOS.
+
 - Các file khách sạn từng thành phố sẽ nằm trong thư mục `/app/config/` với tên lấy từ trường `filePathId` trong schema, ví dụ:
     - `/app/config/hotel_e4b3c9d1.json`
     - `/app/config/hotel_abc123.json`
