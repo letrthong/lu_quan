@@ -315,16 +315,33 @@ def get_sos_comment_file_path(sos_id):
     return os.path.join(HOTEL_CONFIG_DIR, f"comments_{safe_id}.json")
 
 def read_sos_comments(sos_id):
-    """Reads SOS comments for a specific SOS request ID."""
+    """Reads SOS comments for a specific SOS request ID. Migrates from old central file if needed."""
     file_path = get_sos_comment_file_path(sos_id)
     with comments_lock:
-        if not os.path.exists(file_path):
-            return []
-        try:
-            with open(file_path, 'r', encoding='utf-8') as f:
-                return json.load(f)
-        except Exception:
-            return []
+        if os.path.exists(file_path):
+            try:
+                with open(file_path, 'r', encoding='utf-8') as f:
+                    return json.load(f)
+            except Exception:
+                return []
+
+        # Fallback migration: Đọc và di chuyển từ file cũ 'sos_comments.json' nếu tồn tại
+        old_central_path = os.path.join(HOTEL_CONFIG_DIR, "sos_comments.json")
+        if os.path.exists(old_central_path):
+            try:
+                with open(old_central_path, 'r', encoding='utf-8') as f:
+                    all_comments = json.load(f)
+                if isinstance(all_comments, dict) and sos_id in all_comments:
+                    sos_comments = all_comments[sos_id]
+                    # Ghi đè sang file riêng lẻ mới
+                    os.makedirs(os.path.dirname(file_path), exist_ok=True)
+                    with open(file_path, 'w', encoding='utf-8') as f:
+                        json.dump(sos_comments, f, ensure_ascii=False, indent=4)
+                    return sos_comments
+            except Exception as e:
+                print(f"Error migrating comments for {sos_id} from old central file: {e}")
+
+        return []
 
 def write_sos_comments(sos_id, data):
     """Writes SOS comments for a specific SOS request ID."""
