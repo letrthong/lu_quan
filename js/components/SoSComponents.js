@@ -507,7 +507,7 @@ const SoSComponents = ({ setViewMode, isActive, onToast, isSOSModalOpen, setIsSO
 
                 {/* Selected SOS info details card overlay */}
                 {selectedSOS && (
-                    <div className="absolute bottom-24 left-4 right-4 z-[1000] bg-white rounded-3xl shadow-[0_10px_40px_rgba(0,0,0,0.15)] border border-red-100 p-5 flex flex-col gap-3 transition-all duration-300 pointer-events-auto">
+                    <div className="absolute bottom-24 left-4 right-4 z-[1000] bg-white rounded-3xl shadow-[0_10px_40px_rgba(0,0,0,0.15)] border border-red-100 p-5 flex flex-col gap-3 transition-all duration-300 pointer-events-auto max-h-[65vh] overflow-y-auto scrollbar-hide">
                         <div className="flex justify-between items-start">
                             <div>
                                 <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider ${selectedSOS.urgency === 'high' ? 'bg-red-100 text-red-700' : (selectedSOS.urgency === 'medium' ? 'bg-orange-100 text-orange-700' : 'bg-yellow-100 text-yellow-700')
@@ -606,7 +606,7 @@ const SoSComponents = ({ setViewMode, isActive, onToast, isSOSModalOpen, setIsSO
                         )}
 
                         <div className="flex gap-1.5 mt-1 flex-wrap">
-                            {selectedSOS.phone && !selectedSOS.phone.includes('*') && (
+                            {isAdmin && selectedSOS.phone && !selectedSOS.phone.includes('*') && (
                                 <a
                                     href={`tel:${selectedSOS.phone}`}
                                     className="flex-1 min-w-[80px] py-2.5 bg-blue-600 text-white rounded-xl text-[10px] font-black uppercase tracking-wide text-center flex items-center justify-center gap-1 hover:bg-blue-700 active:scale-95 shadow-md shadow-blue-500/20 transition-all"
