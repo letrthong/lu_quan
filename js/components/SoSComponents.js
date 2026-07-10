@@ -273,7 +273,14 @@ const SoSComponents = ({ setViewMode, isActive, onToast, isSOSModalOpen, setIsSO
             let pulseAnim = '';
             let labelStyle = 'border-stone-200 text-stone-700 bg-stone-50';
 
-            if (elapsedHrs >= 12) {
+            const isUserOwnSos = sos.deviceId === localStorage.getItem('luquan_sos_device_id');
+            const isCurrentlySelected = selectedSOS && selectedSOS.id === sos.id;
+
+            if (isCurrentlySelected) {
+                bgColor = 'bg-red-600 scale-125';
+                pulseAnim = 'animate-ping scale-150';
+                labelStyle = 'border-red-400 text-red-800 bg-red-100 font-bold';
+            } else if (elapsedHrs >= 12) {
                 bgColor = 'bg-red-600';
                 pulseAnim = 'animate-ping';
                 labelStyle = 'border-red-200 text-red-700 bg-red-50';
@@ -291,7 +298,8 @@ const SoSComponents = ({ setViewMode, isActive, onToast, isSOSModalOpen, setIsSO
                 className: "",
                 html: `<div class="relative w-full h-full flex justify-center">
                     <div class="absolute w-8 h-8 rounded-full ${bgColor} opacity-40 ${pulseAnim}"></div>
-                    <div class="flex items-center justify-center w-8 h-8 rounded-full shadow-lg border-2 border-white ${bgColor} text-white z-10">
+                    ${isUserOwnSos ? `<div class="absolute -top-1.5 w-11 h-11 rounded-full border-2 border-dashed border-red-500 animate-spin opacity-80 z-20"></div>` : ''}
+                    <div class="flex items-center justify-center w-8 h-8 rounded-full shadow-lg border-2 border-white ${bgColor} text-white z-10 transition-all duration-300">
                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-alert-triangle"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
                     </div>
                     <div class="absolute top-9 left-1/2 -translate-x-1/2 px-1.5 py-0.5 text-[8px] font-black uppercase tracking-tight border rounded shadow-sm min-w-max ${labelStyle}">
@@ -310,7 +318,7 @@ const SoSComponents = ({ setViewMode, isActive, onToast, isSOSModalOpen, setIsSO
             markersGroupRef.current.addLayer(marker);
         });
 
-    }, [nearbySosRequests]);
+    }, [nearbySosRequests, selectedSOS]);
 
     const handleSOSSubmit = async (e) => {
         e.preventDefault();
@@ -450,7 +458,19 @@ const SoSComponents = ({ setViewMode, isActive, onToast, isSOSModalOpen, setIsSO
                 {/* Floating SOS button */}
                 <div className={`absolute right-4 z-[1000] pointer-events-none transition-all duration-300 ${selectedSOS ? 'bottom-[24rem]' : 'bottom-44'}`}>
                     <button
-                        onClick={() => setIsSOSModalOpen(true)}
+                        onClick={() => {
+                            const deviceId = localStorage.getItem('luquan_sos_device_id') || "";
+                            const existingSos = sosRequests.find(r => r.deviceId === deviceId);
+                            if (existingSos) {
+                                setSelectedSOS(existingSos);
+                                if (mapInstance.current) {
+                                    mapInstance.current.flyTo([existingSos.lat, existingSos.lng], 15, { animate: true, duration: 0.8 });
+                                }
+                                if (onToast) onToast("⚠️ Bạn đã có 1 ca cứu nạn đang mở. Đang định vị ca cứu hộ của bạn.");
+                            } else {
+                                setIsSOSModalOpen(true);
+                            }
+                        }}
                         className="w-12 h-12 bg-red-600 text-white rounded-full flex flex-col items-center justify-center shadow-[0_8px_30px_rgba(220,38,38,0.4)] border border-red-500 pointer-events-auto cursor-pointer hover:bg-red-700 active:scale-95 transition-all group animate-pulse-soft"
                         title="Gửi yêu cầu cứu hộ SOS khẩn cấp"
                     >
