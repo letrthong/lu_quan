@@ -200,8 +200,10 @@ def create_sos(sos_data, reporter_ip):
                     except (ValueError, TypeError):
                         pass
                     
-                    if updated_at and datetime.now(timezone.utc) - updated_at < timedelta(hours=24):
-                        raise ValueError("Thiết bị này đã gửi yêu cầu cứu nạn trong vòng 24 giờ qua. Yêu cầu trước đó đã được giải quyết hoặc lưu trữ.")
+                    if updated_at:
+                        diff = datetime.now(timezone.utc) - updated_at
+                        if timedelta(seconds=0) <= diff < timedelta(hours=2):
+                            raise ValueError("Thiết bị này đã gửi yêu cầu cứu nạn trong vòng 2 giờ qua. Yêu cầu trước đó đã được giải quyết hoặc lưu trữ.")
 
     # 3. Create a new active request
     sos_id = str(uuid.uuid4())

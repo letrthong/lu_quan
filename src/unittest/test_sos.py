@@ -73,7 +73,7 @@ class TestSosService(unittest.TestCase):
     @patch('sos_service.read_sos', return_value=[])
     @patch('sos_service.read_sos_history')
     def test_create_sos_resolved_device_rate_limit(self, mock_read_hist, mock_read):
-        yesterday_iso = (datetime.now(timezone.utc) - timedelta(hours=2)).isoformat()
+        yesterday_iso = (datetime.now(timezone.utc) - timedelta(hours=1)).isoformat()
         mock_read_hist.return_value = [{'id': 'sos_hist1', 'deviceId': 'dev1', 'updatedAt': yesterday_iso}]
         data = {
             'name': 'Name',
@@ -86,7 +86,7 @@ class TestSosService(unittest.TestCase):
         }
         with self.assertRaises(ValueError) as ctx:
             sos_service.create_sos(data, '127.0.0.1')
-        self.assertIn("đã gửi yêu cầu cứu nạn trong vòng 24 giờ qua", str(ctx.exception))
+        self.assertIn("đã gửi yêu cầu cứu nạn trong vòng 2 giờ qua", str(ctx.exception))
 
     @patch('sos_service.read_sos', return_value=[{'id': 'sos1', 'status': 'pending'}])
     @patch('sos_service.write_sos')

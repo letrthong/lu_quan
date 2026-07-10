@@ -605,31 +605,37 @@ const SoSComponents = ({ setViewMode, isActive, onToast, isSOSModalOpen, setIsSO
                             </div>
                         )}
 
-                        <div className="flex gap-2 mt-1">
+                        <div className="flex gap-1.5 mt-1 flex-wrap">
                             {selectedSOS.phone && !selectedSOS.phone.includes('*') && (
                                 <a
                                     href={`tel:${selectedSOS.phone}`}
-                                    className="flex-1 py-3 bg-blue-600 text-white rounded-2xl text-xs font-black uppercase tracking-widest text-center flex items-center justify-center gap-2 hover:bg-blue-700 active:scale-95 shadow-md shadow-blue-500/20 transition-all"
+                                    className="flex-1 min-w-[80px] py-2.5 bg-blue-600 text-white rounded-xl text-[10px] font-black uppercase tracking-wide text-center flex items-center justify-center gap-1 hover:bg-blue-700 active:scale-95 shadow-md shadow-blue-500/20 transition-all"
                                 >
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-phone"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg> Gọi Cứu Hộ
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-phone"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg> Gọi Nạn Nhân: {selectedSOS.phone}
                                 </a>
                             )}
+                            <a
+                                href="tel:112"
+                                className="flex-1 min-w-[80px] py-2.5 bg-red-600 text-white rounded-xl text-[10px] font-black uppercase tracking-wide text-center flex items-center justify-center gap-1 hover:bg-red-700 active:scale-95 shadow-md shadow-red-500/20 transition-all"
+                            >
+                                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-phone-call"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/><path d="M14.05 2a9 9 0 0 1 8 7.94M14.05 6a5 5 0 0 1 4 4"/></svg> Gọi 112
+                            </a>
                             <button
                                 onClick={() => {
                                     const shareUrl = `${window.location.origin}${window.location.pathname}?sos=${selectedSOS.id}`;
                                     navigator.clipboard.writeText(shareUrl);
                                     if (onToast) onToast("📋 Đã sao chép liên kết chia sẻ ca cứu hộ này!");
                                 }}
-                                className="flex-1 py-3 bg-stone-700 text-white rounded-2xl text-xs font-black uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-stone-800 active:scale-95 shadow-md shadow-stone-500/20 transition-all cursor-pointer"
+                                className="flex-1 min-w-[80px] py-2.5 bg-stone-700 text-white rounded-xl text-[10px] font-black uppercase tracking-wide flex items-center justify-center gap-1 hover:bg-stone-800 active:scale-95 shadow-md shadow-stone-500/20 transition-all cursor-pointer"
                             >
-                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-share-2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg> Chia sẻ
+                                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-share-2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg> Chia sẻ
                             </button>
                             {isAdmin && (
                                 <button
                                     onClick={() => handleResolveSOS(selectedSOS.id)}
-                                    className="flex-1 py-3 bg-emerald-600 text-white rounded-2xl text-xs font-black uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-emerald-700 active:scale-95 shadow-md shadow-emerald-500/20 transition-all"
+                                    className="flex-1 min-w-[80px] py-2.5 bg-emerald-600 text-white rounded-xl text-[10px] font-black uppercase tracking-wide flex items-center justify-center gap-1 hover:bg-emerald-700 active:scale-95 shadow-md shadow-emerald-500/20 transition-all"
                                 >
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-check-circle"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg> Đã Được Cứu
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-check-circle"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg> Đã Được Cứu
                                 </button>
                             )}
                         </div>
