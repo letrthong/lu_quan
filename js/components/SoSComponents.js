@@ -91,19 +91,19 @@ const SoSComponents = ({ setViewMode, isActive, onToast, isSOSModalOpen, setIsSO
     };
 
     useEffect(() => {
-        if (selectedSOS) {
+        if (selectedSOS && selectedSOS.id) {
             fetchComments(selectedSOS.id);
             setNewCommentText("");
         } else {
             setSosComments([]);
         }
-    }, [selectedSOS]);
+    }, [selectedSOS?.id]);
 
     useEffect(() => {
-        if (selectedSOS && mapInstance.current) {
+        if (selectedSOS && selectedSOS.id && mapInstance.current) {
             mapInstance.current.flyTo([selectedSOS.lat, selectedSOS.lng], 15, { animate: true, duration: 0.8 });
         }
-    }, [selectedSOS]);
+    }, [selectedSOS?.id]);
 
     // Fetch SOS requests
     const fetchSos = async () => {

@@ -351,6 +351,8 @@ const MainApp = () => {
                         isSOSModalOpen={isSOSModalOpen}
                         setIsSOSModalOpen={setIsSOSModalOpen}
                         isAdmin={isAdmin}
+                        selectedSOS={selectedSOS}
+                        onSelectSOS={setSelectedSOS}
                     />
                 </div>
 
