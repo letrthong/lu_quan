@@ -100,6 +100,14 @@ export const useHotelConnectApp = (t) => {
     }, [showSchemaManager]);
 
     useEffect(() => {
+        // Luôn tải danh sách SOS để hỗ trợ liên kết chia sẻ Deep Link cho cả người dùng công cộng
+        HotelAPI.fetchSosRequests(isAdmin)
+            .then(data => {
+                const filtered = isAdmin ? data : data.filter(item => item.status === 'pending' || item.status === 'processing');
+                setSosRequests(filtered || []);
+            })
+            .catch(err => console.error("Lỗi khi tải danh sách SOS cứu hộ:", err));
+
         if (isAdmin) {
             HotelAPI.fetchPendingRequests()
                 .then(data => setPendingRequests(data))
@@ -110,9 +118,6 @@ export const useHotelConnectApp = (t) => {
                     console.error("Lỗi khi tải danh sách báo cáo:", err);
                     setToastMessage(err.message || "Không thể tải báo cáo.");
                 });
-            HotelAPI.fetchSosRequests(true)
-                .then(data => setSosRequests(data))
-                .catch(err => console.error("Lỗi khi tải danh sách SOS cứu hộ:", err));
             Promise.all([
                 HotelAPI.fetchHotelsByStatus('pending_review'),
                 HotelAPI.fetchHotelsByStatus('reported')
@@ -533,11 +538,12 @@ export const useHotelConnectApp = (t) => {
     };
 
     const refreshSos = () => {
-        if (isAdmin) {
-            HotelAPI.fetchSosRequests(true)
-                .then(data => setSosRequests(data))
-                .catch(err => console.error("Lỗi tải lại SOS cứu hộ:", err));
-        }
+        HotelAPI.fetchSosRequests(isAdmin)
+            .then(data => {
+                const filtered = isAdmin ? data : data.filter(item => item.status === 'pending' || item.status === 'processing');
+                setSosRequests(filtered || []);
+            })
+            .catch(err => console.error("Lỗi tải lại SOS cứu hộ:", err));
     };
 
     const formatDate = (dateStr) => {
