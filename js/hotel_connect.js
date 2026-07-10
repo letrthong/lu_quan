@@ -102,6 +102,7 @@ const MainApp = () => {
     } = useHotelConnectApp(t);
     const [isSOSModalOpen, setIsSOSModalOpen] = useState(false);
     const [selectedSOS, setSelectedSOS] = useState(null);
+    const [showDesktopSosUnsupported, setShowDesktopSosUnsupported] = useState(false);
 
     useEffect(() => {
         const urlParams = new URLSearchParams(window.location.search);
@@ -109,13 +110,19 @@ const MainApp = () => {
         if (urlSosId && sosRequests && sosRequests.length > 0) {
             const targetSos = sosRequests.find(s => s.id === urlSosId);
             if (targetSos) {
-                setViewMode('sos');
-                setSelectedSOS(targetSos);
-                
-                // Xóa query parameter khỏi URL để tránh bị nhảy tab khi người dùng refresh hoặc điều hướng
-                const cleanSearch = window.location.search.replace(/sos=[^&]+&?/, '').replace(/[&?]$/, '');
-                const newUrl = window.location.pathname + cleanSearch;
-                window.history.replaceState({}, '', newUrl);
+                if (window.innerWidth < 768) {
+                    // Mobile: hiển thị bình thường
+                    setViewMode('sos');
+                    setSelectedSOS(targetSos);
+                    
+                    // Xóa query parameter khỏi URL để tránh bị nhảy tab khi người dùng refresh hoặc điều hướng
+                    const cleanSearch = window.location.search.replace(/sos=[^&]+&?/, '').replace(/[&?]$/, '');
+                    const newUrl = window.location.pathname + cleanSearch;
+                    window.history.replaceState({}, '', newUrl);
+                } else {
+                    // Desktop: hiển thị popup thông báo không hỗ trợ
+                    setShowDesktopSosUnsupported(true);
+                }
             }
         }
     }, [sosRequests]);
@@ -692,6 +699,31 @@ const MainApp = () => {
                 <div className="fixed top-6 md:top-10 left-1/2 -translate-x-1/2 z-[300] bg-stone-900/90 backdrop-blur-md text-white px-5 py-3.5 rounded-2xl shadow-2xl flex items-center gap-3 text-[10px] md:text-xs font-black uppercase tracking-widest border border-white/20 animate-in slide-in-from-top-4 fade-in duration-300 max-w-[90vw] text-center pointer-events-none">
                     <Icon name="bell-ring" size={18} className="text-orange-500 shrink-0" />
                     <span>{toastMessage}</span>
+                </div>
+            )}
+
+            {/* Desktop SOS Shared Link Unsupported Block Overlay Modal */}
+            {showDesktopSosUnsupported && (
+                <div className="fixed inset-0 bg-stone-900/80 backdrop-blur-md z-[2000] flex items-center justify-center p-4">
+                    <div className="bg-white rounded-3xl p-6 max-w-sm w-full text-center shadow-2xl border border-stone-100 flex flex-col items-center gap-4 animate-in fade-in zoom-in duration-200">
+                        <div className="w-12 h-12 bg-red-50 text-red-600 rounded-full flex items-center justify-center">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-smartphone"><rect width="14" height="20" x="5" y="2" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>
+                        </div>
+                        <div>
+                            <h3 className="text-base font-black text-stone-900 uppercase">Chỉ Hỗ Trợ Di Động</h3>
+                            <p className="text-xs text-stone-500 font-bold mt-2 leading-relaxed">
+                                Tính năng xem bản đồ cứu nạn SOS của người dân hiện tại chỉ hỗ trợ tốt nhất trên thiết bị di động.
+                            </p>
+                        </div>
+                        <button
+                            onClick={() => {
+                                window.location.href = window.location.origin + window.location.pathname;
+                            }}
+                            className="w-full py-3 bg-stone-900 text-white rounded-2xl text-xs font-black uppercase tracking-widest hover:bg-stone-800 active:scale-95 transition-all cursor-pointer shadow-md"
+                        >
+                            Quay Về Trang Chủ
+                        </button>
+                    </div>
                 </div>
             )}
         </div>
