@@ -319,6 +319,7 @@ const MainApp = () => {
                         onToast={setToastMessage}
                         isSOSModalOpen={isSOSModalOpen}
                         setIsSOSModalOpen={setIsSOSModalOpen}
+                        isAdmin={isAdmin}
                     />
                 </div>
 

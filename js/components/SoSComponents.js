@@ -41,7 +41,7 @@ const getTimeAgo = (dateStr) => {
     if (!dateStr) return "Chưa rõ";
     const elapsedMs = new Date() - new Date(dateStr);
     const elapsedHrs = elapsedMs / (1000 * 60 * 60);
-    
+
     if (elapsedHrs < 1) {
         const mins = Math.max(1, Math.round(elapsedHrs * 60));
         return `${mins} phút trước`;
@@ -50,7 +50,7 @@ const getTimeAgo = (dateStr) => {
     return `${hrs} giờ trước`;
 };
 
-const SoSComponents = ({ setViewMode, isActive, onToast, isSOSModalOpen, setIsSOSModalOpen }) => {
+const SoSComponents = ({ setViewMode, isActive, onToast, isSOSModalOpen, setIsSOSModalOpen, isAdmin }) => {
     const [userLocation, setUserLocation] = useState(null);
     const [searchLocation, setSearchLocation] = useState(null);
     const [error, setError] = useState(null);
@@ -63,6 +63,9 @@ const SoSComponents = ({ setViewMode, isActive, onToast, isSOSModalOpen, setIsSO
 
     const [sosRequests, setSosRequests] = useState([]);
     const [selectedSOS, setSelectedSOS] = useState(null);
+    const [sosComments, setSosComments] = useState([]);
+    const [newCommentText, setNewCommentText] = useState("");
+    const [isSubmittingComment, setIsSubmittingComment] = useState(false);
     const [sosForm, setSosForm] = useState({ name: '', phone: '', message: '', urgency: 'medium', image: null });
     const [isSubmittingSOS, setIsSubmittingSOS] = useState(false);
 
@@ -75,6 +78,24 @@ const SoSComponents = ({ setViewMode, isActive, onToast, isSOSModalOpen, setIsSO
     useEffect(() => {
         localStorage.setItem('luquan_sos_radius', radius);
     }, [radius]);
+
+    const fetchComments = async (sosId) => {
+        try {
+            const data = await HotelAPI.fetchSosComments(sosId);
+            setSosComments(data || []);
+        } catch (err) {
+            console.error("Lỗi khi tải bình luận:", err);
+        }
+    };
+
+    useEffect(() => {
+        if (selectedSOS) {
+            fetchComments(selectedSOS.id);
+            setNewCommentText("");
+        } else {
+            setSosComments([]);
+        }
+    }, [selectedSOS]);
 
     // Fetch SOS requests
     const fetchSos = async () => {
@@ -103,14 +124,14 @@ const SoSComponents = ({ setViewMode, isActive, onToast, isSOSModalOpen, setIsSO
         setError(null);
 
         let watchId;
-        
+
         const startWatching = (initialLoc = null) => {
             if (initialLoc) {
                 setUserLocation(initialLoc);
                 setIsLoading(false);
                 setError(null);
             }
-            
+
             watchId = navigator.geolocation.watchPosition(
                 (position) => {
                     const newLoc = {
@@ -163,7 +184,7 @@ const SoSComponents = ({ setViewMode, isActive, onToast, isSOSModalOpen, setIsSO
     const nearbySosRequests = useMemo(() => {
         const center = searchLocation || userLocation;
         if (!center || !sosRequests) return [];
-        
+
         return sosRequests.map(sos => {
             const distance = calculateDistance(center.lat, center.lng, sos.lat, sos.lng);
             return { ...sos, distance };
@@ -193,7 +214,7 @@ const SoSComponents = ({ setViewMode, isActive, onToast, isSOSModalOpen, setIsSO
                 iconAnchor: [24, 24]
             });
             userMarkerRef.current = window.L.marker([userLocation.lat, userLocation.lng], { icon: userIcon, zIndexOffset: 1000 }).addTo(mapInstance.current);
-            
+
             userMarkerRef.current.on('click', () => {
                 const currentPos = userMarkerRef.current.getLatLng();
                 if (circleRef.current) {
@@ -247,11 +268,11 @@ const SoSComponents = ({ setViewMode, isActive, onToast, isSOSModalOpen, setIsSO
 
         nearbySosRequests.forEach(sos => {
             const elapsedHrs = (new Date() - new Date(sos.createdAt)) / (1000 * 60 * 60);
-            
+
             let bgColor = 'bg-stone-500';
             let pulseAnim = '';
             let labelStyle = 'border-stone-200 text-stone-700 bg-stone-50';
-            
+
             if (elapsedHrs >= 12) {
                 bgColor = 'bg-red-600';
                 pulseAnim = 'animate-ping';
@@ -330,12 +351,34 @@ const SoSComponents = ({ setViewMode, isActive, onToast, isSOSModalOpen, setIsSO
 
     const handleResolveSOS = async (sosId) => {
         try {
-            await HotelAPI.updateSosStatus(sosId, 'resolved');
+            await HotelAPI.updateSosStatus(sosId, 'resolved', isAdmin);
             if (onToast) onToast("🎉 Đánh dấu đã cứu nạn thành công!");
             setSelectedSOS(null);
             fetchSos();
         } catch (err) {
             if (onToast) onToast(err.message || "Lỗi khi cập nhật trạng thái");
+        }
+    };
+
+    const handleCommentSubmit = async (e) => {
+        e.preventDefault();
+        if (!newCommentText.trim() || !selectedSOS) return;
+        
+        setIsSubmittingComment(true);
+        try {
+            const deviceId = localStorage.getItem('luquan_sos_device_id') || "";
+            const commentData = {
+                message: newCommentText,
+                deviceId: deviceId
+            };
+            await HotelAPI.submitSosComment(selectedSOS.id, commentData, isAdmin);
+            setNewCommentText("");
+            fetchComments(selectedSOS.id);
+            if (onToast) onToast("💬 Đăng cập nhật tình hình thành công!");
+        } catch (err) {
+            if (onToast) onToast(err.message || "Lỗi khi gửi bình luận");
+        } finally {
+            setIsSubmittingComment(false);
         }
     };
 
@@ -353,7 +396,7 @@ const SoSComponents = ({ setViewMode, isActive, onToast, isSOSModalOpen, setIsSO
             <div className="flex flex-col items-center justify-center h-full p-4 text-center text-red-500 bg-stone-50">
                 <Icon name="map-pin-off" size={32} className="mb-4" />
                 <p className="text-sm font-bold mb-4">{error}</p>
-                
+
                 <div className="text-left text-xs text-stone-600 bg-stone-100 p-4 rounded-2xl border border-stone-200 max-w-sm w-full space-y-2 shadow-sm">
                     <p className="font-black text-stone-700">💡 HƯỚNG DẪN BẬT GPS ĐỊNH VỊ:</p>
                     <ul className="list-decimal list-inside space-y-1.5 font-medium">
@@ -376,7 +419,7 @@ const SoSComponents = ({ setViewMode, isActive, onToast, isSOSModalOpen, setIsSO
         <div className="flex flex-col h-full bg-stone-50 overflow-hidden relative">
             <div className="flex-1 w-full h-full relative z-0 pb-safe pb-[60px]">
                 <div ref={mapRef} className="w-full h-full bg-stone-200"></div>
-                
+
                 {/* Radius filter area selector */}
                 <div className="absolute top-4 left-4 z-[1000] pointer-events-none">
                     <div className="bg-white/95 backdrop-blur-sm px-4 py-2 rounded-2xl shadow-lg border border-red-100 flex flex-col pointer-events-auto">
@@ -385,8 +428,8 @@ const SoSComponents = ({ setViewMode, isActive, onToast, isSOSModalOpen, setIsSO
                                 <Icon name="alert-triangle" size={12} className="text-red-500" />
                                 Phạm Vi SOS
                             </span>
-                            <select 
-                                value={radius} 
+                            <select
+                                value={radius}
                                 onChange={(e) => setRadius(Number(e.target.value))}
                                 className="bg-white border border-stone-200 text-red-700 text-[11px] font-black rounded-md outline-none focus:border-red-500 focus:ring-1 focus:ring-red-500 cursor-pointer mx-1 px-1.5 py-0.5 shadow-sm"
                             >
@@ -406,7 +449,7 @@ const SoSComponents = ({ setViewMode, isActive, onToast, isSOSModalOpen, setIsSO
 
                 {/* Floating SOS button */}
                 <div className={`absolute right-4 z-[1000] pointer-events-none transition-all duration-300 ${selectedSOS ? 'bottom-[24rem]' : 'bottom-44'}`}>
-                    <button 
+                    <button
                         onClick={() => setIsSOSModalOpen(true)}
                         className="w-12 h-12 bg-red-600 text-white rounded-full flex flex-col items-center justify-center shadow-[0_8px_30px_rgba(220,38,38,0.4)] border border-red-500 pointer-events-auto cursor-pointer hover:bg-red-700 active:scale-95 transition-all group animate-pulse-soft"
                         title="Gửi yêu cầu cứu hộ SOS khẩn cấp"
@@ -418,7 +461,7 @@ const SoSComponents = ({ setViewMode, isActive, onToast, isSOSModalOpen, setIsSO
 
                 {/* Centering button */}
                 <div className={`absolute right-4 z-[1000] pointer-events-none transition-all duration-300 ${selectedSOS ? 'bottom-[20rem]' : 'bottom-28'}`}>
-                    <button 
+                    <button
                         onClick={() => {
                             setSearchLocation(null);
                             if (circleRef.current && mapInstance.current) {
@@ -426,7 +469,7 @@ const SoSComponents = ({ setViewMode, isActive, onToast, isSOSModalOpen, setIsSO
                             } else {
                                 mapInstance.current?.flyTo([userLocation.lat, userLocation.lng], 15, { animate: true, duration: 0.5 });
                             }
-                        }} 
+                        }}
                         className="w-12 h-12 bg-white text-stone-600 rounded-full flex items-center justify-center shadow-[0_8px_30px_rgba(0,0,0,0.15)] border border-stone-100 pointer-events-auto cursor-pointer hover:text-red-600 hover:bg-stone-50 active:scale-95 transition-all group"
                         title="Định tâm vị trí của bạn"
                     >
@@ -439,9 +482,8 @@ const SoSComponents = ({ setViewMode, isActive, onToast, isSOSModalOpen, setIsSO
                     <div className="absolute bottom-24 left-4 right-4 z-[1000] bg-white rounded-3xl shadow-[0_10px_40px_rgba(0,0,0,0.15)] border border-red-100 p-5 flex flex-col gap-3 transition-all duration-300 pointer-events-auto">
                         <div className="flex justify-between items-start">
                             <div>
-                                <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider ${
-                                    selectedSOS.urgency === 'high' ? 'bg-red-100 text-red-700' : (selectedSOS.urgency === 'medium' ? 'bg-orange-100 text-orange-700' : 'bg-yellow-100 text-yellow-700')
-                                }`}>
+                                <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider ${selectedSOS.urgency === 'high' ? 'bg-red-100 text-red-700' : (selectedSOS.urgency === 'medium' ? 'bg-orange-100 text-orange-700' : 'bg-yellow-100 text-yellow-700')
+                                    }`}>
                                     SOS: {selectedSOS.urgency === 'high' ? 'Rất khẩn cấp' : (selectedSOS.urgency === 'medium' ? 'Cần cứu hộ' : 'Hỗ trợ')}
                                 </span>
                                 <h4 className="text-sm font-black text-stone-800 mt-1 flex items-center gap-1.5">
@@ -449,14 +491,14 @@ const SoSComponents = ({ setViewMode, isActive, onToast, isSOSModalOpen, setIsSO
                                     {selectedSOS.name}
                                 </h4>
                             </div>
-                            <button 
+                            <button
                                 onClick={() => setSelectedSOS(null)}
                                 className="text-stone-400 hover:text-stone-600 p-1 rounded-full hover:bg-stone-100 active:scale-95 transition-all"
                             >
                                 <Icon name="x" size={16} />
                             </button>
                         </div>
-                        
+
                         <div className="text-xs text-stone-600 bg-stone-50 p-3 rounded-2xl border border-stone-100 font-medium max-h-24 overflow-y-auto">
                             <p className="font-semibold text-stone-500 text-[10px] uppercase tracking-wider mb-1">📢 Nội dung hỗ trợ:</p>
                             {selectedSOS.message}
@@ -464,8 +506,8 @@ const SoSComponents = ({ setViewMode, isActive, onToast, isSOSModalOpen, setIsSO
 
                         {selectedSOS.hasImage && (
                             <div className="w-full rounded-2xl overflow-hidden border border-stone-100 shadow-sm max-h-48 flex items-center justify-center bg-stone-50">
-                                <img 
-                                    src={`${HotelAPI.baseUrl}/api/hotelconnect/v1/sos/${selectedSOS.id}/image`} 
+                                <img
+                                    src={`${HotelAPI.baseUrl}/api/hotelconnect/v1/sos/${selectedSOS.id}/image`}
                                     alt="Ảnh cứu nạn thực tế"
                                     className="w-full h-full object-cover max-h-48 cursor-pointer"
                                     onError={(e) => { e.target.style.display = 'none'; }}
@@ -474,21 +516,72 @@ const SoSComponents = ({ setViewMode, isActive, onToast, isSOSModalOpen, setIsSO
                             </div>
                         )}
 
-                        <div className="flex gap-2">
-                            <a 
-                                href={`tel:${selectedSOS.phone}`}
-                                className="flex-1 py-3 bg-blue-600 text-white rounded-2xl text-xs font-black uppercase tracking-widest text-center flex items-center justify-center gap-2 hover:bg-blue-700 active:scale-95 shadow-md shadow-blue-500/20 transition-all"
-                            >
-                                <Icon name="phone" size={14} /> Gọi Cứu Hộ
-                            </a>
-                            <button 
-                                onClick={() => handleResolveSOS(selectedSOS.id)}
-                                className="flex-1 py-3 bg-emerald-600 text-white rounded-2xl text-xs font-black uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-emerald-700 active:scale-95 shadow-md shadow-emerald-500/20 transition-all"
-                            >
-                                <Icon name="check-circle" size={14} /> Đã Được Cứu
-                            </button>
+                        {/* List of comments */}
+                        <div className="space-y-1.5 max-h-32 overflow-y-auto mt-1 border-t border-stone-100 pt-2 pb-1">
+                            <p className="font-semibold text-stone-500 text-[10px] uppercase tracking-wider mb-1">💬 Nhật ký cập nhật ({sosComments.length}):</p>
+                            {sosComments.length === 0 ? (
+                                <p className="text-[10px] text-stone-400 italic">Chưa có cập nhật tình hình nào.</p>
+                            ) : (
+                                sosComments.map((comment) => (
+                                    <div key={comment.id} className="text-[10px] leading-relaxed bg-stone-50 p-2 rounded-xl border border-stone-100 flex flex-col">
+                                        <div className="flex justify-between items-center font-black uppercase text-[8px] tracking-wider mb-0.5">
+                                            <span className={comment.isAdmin ? "text-red-600" : "text-stone-600"}>
+                                                👤 {comment.author}
+                                            </span>
+                                            <span className="text-stone-400 font-bold lowercase">
+                                                {getTimeAgo(comment.createdAt)}
+                                            </span>
+                                        </div>
+                                        <p className="font-medium text-stone-700">{comment.message}</p>
+                                    </div>
+                                ))
+                            )}
                         </div>
-                        
+
+                        {/* Add comment form */}
+                        {(isAdmin || selectedSOS.deviceId === localStorage.getItem('luquan_sos_device_id')) ? (
+                            <form onSubmit={handleCommentSubmit} className="flex gap-2 items-center mt-1 border-t border-stone-100 pt-2">
+                                <input 
+                                    type="text"
+                                    placeholder="Cập nhật tình hình mới nhất..."
+                                    value={newCommentText}
+                                    onChange={(e) => setNewCommentText(e.target.value)}
+                                    disabled={isSubmittingComment}
+                                    className="flex-1 px-3 py-2 bg-stone-50 border border-stone-200 rounded-xl text-[10px] font-semibold focus:border-red-500 outline-none"
+                                />
+                                <button
+                                    type="submit"
+                                    disabled={isSubmittingComment || !newCommentText.trim()}
+                                    className="px-3 py-2 bg-red-600 text-white rounded-xl text-[10px] font-black uppercase tracking-wider disabled:opacity-50 transition-all cursor-pointer shrink-0"
+                                >
+                                    {isSubmittingComment ? "..." : "Gửi"}
+                                </button>
+                            </form>
+                        ) : (
+                            <div className="text-[9px] text-stone-400 italic text-center mt-1 border-t border-stone-100 pt-2">
+                                🔒 Chỉ người báo tin hoặc lực lượng Cứu hộ mới có quyền cập nhật tình hình.
+                            </div>
+                        )}
+
+                        <div className="flex gap-2 mt-1">
+                            {selectedSOS.phone && !selectedSOS.phone.includes('*') && (
+                                <a
+                                    href={`tel:${selectedSOS.phone}`}
+                                    className="flex-1 py-3 bg-blue-600 text-white rounded-2xl text-xs font-black uppercase tracking-widest text-center flex items-center justify-center gap-2 hover:bg-blue-700 active:scale-95 shadow-md shadow-blue-500/20 transition-all"
+                                >
+                                    <Icon name="phone" size={14} /> Gọi Cứu Hộ
+                                </a>
+                            )}
+                            {isAdmin && (
+                                <button
+                                    onClick={() => handleResolveSOS(selectedSOS.id)}
+                                    className="flex-1 py-3 bg-emerald-600 text-white rounded-2xl text-xs font-black uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-emerald-700 active:scale-95 shadow-md shadow-emerald-500/20 transition-all"
+                                >
+                                    <Icon name="check-circle" size={14} /> Đã Được Cứu
+                                </button>
+                            )}
+                        </div>
+
                         <div className="text-[9px] text-stone-400 font-bold text-center">
                             Gửi lúc: {new Date(selectedSOS.createdAt).toLocaleString('vi-VN')}
                         </div>
@@ -497,13 +590,13 @@ const SoSComponents = ({ setViewMode, isActive, onToast, isSOSModalOpen, setIsSO
 
                 {/* SOS emergency submit request form modal dialog */}
                 {isSOSModalOpen && (
-                    <div 
+                    <div
                         onClick={(e) => e.stopPropagation()}
                         onMouseDown={(e) => e.stopPropagation()}
                         onTouchStart={(e) => e.stopPropagation()}
                         className="absolute inset-0 bg-stone-900/60 backdrop-blur-sm z-[2000] flex items-center justify-center p-4 pointer-events-auto"
                     >
-                        <form 
+                        <form
                             onSubmit={handleSOSSubmit}
                             onClick={(e) => e.stopPropagation()}
                             onMouseDown={(e) => e.stopPropagation()}
@@ -515,7 +608,7 @@ const SoSComponents = ({ setViewMode, isActive, onToast, isSOSModalOpen, setIsSO
                                     <Icon name="alert-triangle" size={20} className="animate-bounce text-red-600" />
                                     Gửi Yêu Cầu Cứu Hộ SOS
                                 </h3>
-                                <button 
+                                <button
                                     type="button"
                                     onClick={() => setIsSOSModalOpen(false)}
                                     className="text-stone-400 hover:text-stone-600 p-1 rounded-full hover:bg-stone-100 transition-all"
@@ -535,7 +628,7 @@ const SoSComponents = ({ setViewMode, isActive, onToast, isSOSModalOpen, setIsSO
                             <div className="space-y-3">
                                 <div>
                                     <label className="block text-[10px] font-black uppercase text-stone-500 tracking-wider mb-1.5">Họ tên người cần hỗ trợ *</label>
-                                    <input 
+                                    <input
                                         type="text"
                                         required
                                         placeholder="Ví dụ: Nguyễn Văn A"
@@ -547,7 +640,7 @@ const SoSComponents = ({ setViewMode, isActive, onToast, isSOSModalOpen, setIsSO
 
                                 <div>
                                     <label className="block text-[10px] font-black uppercase text-stone-500 tracking-wider mb-1.5">Số điện thoại liên hệ *</label>
-                                    <input 
+                                    <input
                                         type="tel"
                                         required
                                         placeholder="Ví dụ: 0912345678"
@@ -559,7 +652,7 @@ const SoSComponents = ({ setViewMode, isActive, onToast, isSOSModalOpen, setIsSO
 
                                 <div>
                                     <label className="block text-[10px] font-black uppercase text-stone-500 tracking-wider mb-1.5">Mô tả tình trạng và nhu cầu cứu hộ *</label>
-                                    <textarea 
+                                    <textarea
                                         required
                                         rows="3"
                                         placeholder="Ví dụ: Cần hỗ trợ thức ăn, nước uống..."
@@ -567,7 +660,7 @@ const SoSComponents = ({ setViewMode, isActive, onToast, isSOSModalOpen, setIsSO
                                         onChange={(e) => setSosForm({ ...sosForm, message: e.target.value })}
                                         className="w-full px-4 py-3 bg-stone-50 border border-stone-200 rounded-xl text-xs font-semibold focus:border-red-500 focus:ring-1 focus:ring-red-500 outline-none transition-all resize-none"
                                     />
-                                    
+
                                     {/* Quick SOS Suggestions */}
                                     <div className="mt-2 flex flex-wrap gap-1.5">
                                         {[
@@ -597,7 +690,7 @@ const SoSComponents = ({ setViewMode, isActive, onToast, isSOSModalOpen, setIsSO
                                 <div>
                                     <label className="block text-[10px] font-black uppercase text-stone-500 tracking-wider mb-1.5 font-bold">Hình ảnh thực tế (không bắt buộc)</label>
                                     <div className="flex items-center gap-3">
-                                        <input 
+                                        <input
                                             type="file"
                                             id="sos-image-input"
                                             accept="image/*"
@@ -611,7 +704,7 @@ const SoSComponents = ({ setViewMode, isActive, onToast, isSOSModalOpen, setIsSO
                                                 }
                                             }}
                                         />
-                                        <label 
+                                        <label
                                             htmlFor="sos-image-input"
                                             className="px-4 py-2.5 bg-stone-100 hover:bg-stone-200 text-stone-700 rounded-xl text-xs font-black uppercase tracking-wider border border-stone-200 transition-all active:scale-95 cursor-pointer flex items-center gap-1.5"
                                         >
@@ -631,7 +724,7 @@ const SoSComponents = ({ setViewMode, isActive, onToast, isSOSModalOpen, setIsSO
                                         )}
                                     </div>
                                 </div>
-                                
+
                                 {userLocation ? (
                                     <div className="text-[10px] font-bold text-emerald-600 flex items-center gap-1.5 bg-emerald-50 px-3 py-2 rounded-xl border border-emerald-100">
                                         <Icon name="check-circle" size={12} /> Đã xác định tọa độ GPS: {userLocation.lat.toFixed(4)}, {userLocation.lng.toFixed(4)}
@@ -644,14 +737,14 @@ const SoSComponents = ({ setViewMode, isActive, onToast, isSOSModalOpen, setIsSO
                             </div>
 
                             <div className="flex gap-3 border-t border-stone-100 pt-4 mt-2">
-                                <button 
+                                <button
                                     type="button"
                                     onClick={() => setIsSOSModalOpen(false)}
                                     className="flex-1 py-3 bg-stone-100 text-stone-600 rounded-xl text-xs font-black uppercase tracking-widest hover:bg-stone-200 active:scale-95 transition-all"
                                 >
                                     Hủy
                                 </button>
-                                <button 
+                                <button
                                     type="submit"
                                     disabled={isSubmittingSOS || !userLocation}
                                     className="flex-1 py-3 bg-red-600 text-white rounded-xl text-xs font-black uppercase tracking-widest hover:bg-red-700 active:scale-95 transition-all disabled:opacity-50 disabled:pointer-events-none shadow-lg shadow-red-600/20"

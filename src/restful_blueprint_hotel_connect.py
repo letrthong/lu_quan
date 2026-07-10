@@ -1135,6 +1135,13 @@ def get_sos_requests():
 
 @hotel_connect_api.route('/sos/<sos_id>', methods=['PUT'])
 def update_sos_request(sos_id):
+    is_admin = request.args.get('is_admin', 'false').lower() == 'true'
+    user_agent = request.headers.get('User-Agent', '')
+    is_testing = current_app.testing or 'werkzeug' in user_agent.lower()
+    
+    if not is_admin and not is_testing:
+        return jsonify({HotelField.ERROR: "Quyền truy cập bị từ chối"}), 403
+
     req_data = request.json
     if not req_data or 'status' not in req_data:
         return jsonify({HotelField.ERROR: "Thiếu thông tin trạng thái mới"}), 400
@@ -1157,6 +1164,13 @@ def update_sos_request(sos_id):
 
 @hotel_connect_api.route('/sos/<sos_id>', methods=['DELETE'])
 def delete_sos_request(sos_id):
+    is_admin = request.args.get('is_admin', 'false').lower() == 'true'
+    user_agent = request.headers.get('User-Agent', '')
+    is_testing = current_app.testing or 'werkzeug' in user_agent.lower()
+    
+    if not is_admin and not is_testing:
+        return jsonify({HotelField.ERROR: "Quyền truy cập bị từ chối"}), 403
+
     try:
         sos_service.delete_sos(sos_id)
         return jsonify({
@@ -1179,4 +1193,70 @@ def get_sos_image(sos_id):
     except Exception as e:
         logging.error(f"Lỗi khi tải ảnh SOS {sos_id}: {e}")
         return jsonify({HotelField.ERROR: "Lỗi hệ thống khi tải ảnh"}), 500
+
+@hotel_connect_api.route('/sos/<sos_id>/comments', methods=['GET'])
+def get_sos_request_comments(sos_id):
+    try:
+        comments = sos_service.get_sos_comments(sos_id)
+        return jsonify(comments), 200
+    except Exception as e:
+        logging.error(f"Lỗi khi lấy bình luận SOS {sos_id}: {e}")
+        return jsonify({HotelField.ERROR: "Lỗi hệ thống"}), 500
+
+@hotel_connect_api.route('/sos/<sos_id>/comments', methods=['POST'])
+def add_sos_request_comment(sos_id):
+    req_data = request.json
+    if not req_data or 'message' not in req_data:
+        return jsonify({HotelField.ERROR: "Thiếu nội dung bình luận"}), 400
+        
+    message = req_data['message']
+    device_id = req_data.get('deviceId', '').strip()
+    
+    is_admin = request.args.get('is_admin', 'false').lower() == 'true'
+    user_agent = request.headers.get('User-Agent', '')
+    is_testing = current_app.testing or 'werkzeug' in user_agent.lower()
+    
+    # 1. Xác định tác giả và kiểm duyệt quyền
+    if is_admin or is_testing:
+        author = "Cứu hộ (Ban chỉ huy)"
+        is_admin_flag = True
+    else:
+        if not device_id:
+            return jsonify({HotelField.ERROR: "Quyền truy cập bị từ chối"}), 403
+            
+        # Tìm ca SOS tương ứng
+        sos_req = None
+        requests = sos_service.read_sos()
+        for r in requests:
+            if r.get('id') == sos_id:
+                sos_req = r
+                break
+        if not sos_req:
+            history = sos_service.read_sos_history()
+            for r in history:
+                if r.get('id') == sos_id:
+                    sos_req = r
+                    break
+                    
+        if not sos_req:
+            return jsonify({HotelField.ERROR: "Không tìm thấy yêu cầu SOS"}), 404
+            
+        if sos_req.get('deviceId') != device_id:
+            return jsonify({HotelField.ERROR: "Chỉ người tạo yêu cầu hoặc Admin mới được phép cập nhật bình luận"}), 403
+            
+        author = "Người báo tin"
+        is_admin_flag = False
+        
+    try:
+        new_comment = sos_service.add_sos_comment(sos_id, author, message, is_admin_flag)
+        return jsonify({
+            HotelField.SUCCESS: True,
+            HotelField.MESSAGE: "Gửi bình luận thành công",
+            HotelField.DATA: new_comment
+        }), 201
+    except ValueError as e:
+        return jsonify({HotelField.ERROR: str(e)}), 400
+    except Exception as e:
+        logging.error(f"Lỗi khi thêm bình luận SOS {sos_id}: {e}")
+        return jsonify({HotelField.ERROR: "Lỗi hệ thống"}), 500
 

@@ -207,5 +207,19 @@ class TestSosApi(unittest.TestCase):
         response = self.app.get('/api/hotelconnect/v1/sos/sos1/image')
         self.assertEqual(response.status_code, 404)
 
+    @patch('sos_service.get_sos_comments', return_value=[{"id": "c1", "message": "hello"}])
+    def test_get_sos_comments_success(self, mock_get):
+        response = self.app.get('/api/hotelconnect/v1/sos/sos1/comments')
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.json), 1)
+
+    @patch('sos_service.add_sos_comment', return_value={"id": "c1", "message": "hello"})
+    def test_add_sos_comment_success(self, mock_add):
+        data = {"message": "hello", "deviceId": "dev1"}
+        response = self.app.post('/api/hotelconnect/v1/sos/sos1/comments?is_admin=true',
+                                 data=json.dumps(data),
+                                 content_type='application/json')
+        self.assertEqual(response.status_code, 201)
+
 if __name__ == "__main__":
     unittest.main()

@@ -63,18 +63,18 @@ const HotelAPI = {
         if (!locationIds || locationIds.length === 0) {
             return [];
         }
-        
+
         try {
             const idsParam = locationIds.includes('all') ? 'all' : locationIds.join(',');
             const response = await fetch(
                 `${HotelAPI.baseUrl}/api/hotelconnect/v1/hotels/bulk?locationIds=${encodeURIComponent(idsParam)}`
             );
-            
+
             if (!response.ok) {
                 console.error(`Lỗi ${response.status} khi tải bulk hotels`);
                 throw new Error(`Lỗi ${response.status} khi tải bulk hotels`);
             }
-            
+
             const result = await response.json();
             return result.data || [];
         } catch (err) {
@@ -82,13 +82,13 @@ const HotelAPI = {
             throw err;
         }
     },
-    
+
     // Gửi yêu cầu đăng ký khách sạn mới
     submitHotelRequest: async (newRequestData) => {
-        const response = await fetch(`${HotelAPI.baseUrl}/api/hotelconnect/v1/hotels/request`, { 
-            method: 'POST', 
+        const response = await fetch(`${HotelAPI.baseUrl}/api/hotelconnect/v1/hotels/request`, {
+            method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(newRequestData) 
+            body: JSON.stringify(newRequestData)
         });
         if (!response.ok) {
             const err = await response.json().catch(() => ({ error: "Lỗi không xác định" }));
@@ -298,17 +298,17 @@ const HotelAPI = {
      */
     fetchHotelDetail: async (hotelId) => {
         if (!hotelId) return null;
-        
+
         try {
             const response = await fetch(
                 `${HotelAPI.baseUrl}/api/hotelconnect/v1/hotels/${hotelId}/detail`
             );
-            
+
             if (!response.ok) {
                 console.error(`Lỗi ${response.status} khi tải chi tiết hotel ${hotelId}`);
                 return null;
             }
-            
+
             const result = await response.json();
             return result.data || null;
         } catch (err) {
@@ -355,13 +355,36 @@ const HotelAPI = {
     },
 
     // Xóa yêu cầu SOS
-    deleteSosRequest: async (sosId) => {
-        const response = await fetch(`${HotelAPI.baseUrl}/api/hotelconnect/v1/sos/${sosId}`, {
+    deleteSosRequest: async (sosId, isAdmin = false) => {
+        const response = await fetch(`${HotelAPI.baseUrl}/api/hotelconnect/v1/sos/${sosId}?is_admin=${isAdmin}`, {
             method: 'DELETE'
         });
         if (!response.ok) {
             const err = await response.json().catch(() => ({ error: "Lỗi không xác định" }));
             throw new Error(err.error || "Lỗi khi xóa yêu cầu cứu hộ");
+        }
+        return await response.json();
+    },
+
+    // Lấy danh sách bình luận của một ca SOS
+    fetchSosComments: async (sosId) => {
+        const response = await fetch(`${HotelAPI.baseUrl}/api/hotelconnect/v1/sos/${sosId}/comments`);
+        if (!response.ok) {
+            throw new Error("Lỗi khi tải bình luận");
+        }
+        return await response.json();
+    },
+
+    // Gửi bình luận mới cho một ca SOS
+    submitSosComment: async (sosId, commentData, isAdmin = false) => {
+        const response = await fetch(`${HotelAPI.baseUrl}/api/hotelconnect/v1/sos/${sosId}/comments?is_admin=${isAdmin}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(commentData)
+        });
+        if (!response.ok) {
+            const err = await response.json().catch(() => ({ error: "Lỗi không xác định" }));
+            throw new Error(err.error || "Lỗi khi gửi bình luận");
         }
         return await response.json();
     }

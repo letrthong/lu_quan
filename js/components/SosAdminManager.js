@@ -8,7 +8,7 @@ const SosAdminManager = ({ sosRequests, refreshSos, onToast }) => {
     const handleStatusChange = async (sosId, newStatus) => {
         setUpdatingId(sosId);
         try {
-            await HotelAPI.updateSosStatus(sosId, newStatus);
+            await HotelAPI.updateSosStatus(sosId, newStatus, true);
             if (onToast) onToast(`Đã cập nhật trạng thái yêu cầu SOS thành: ${getStatusLabel(newStatus)}`);
             refreshSos();
         } catch (err) {
@@ -23,7 +23,7 @@ const SosAdminManager = ({ sosRequests, refreshSos, onToast }) => {
             return;
         }
         try {
-            await HotelAPI.deleteSosRequest(sosId);
+            await HotelAPI.deleteSosRequest(sosId, true);
             if (onToast) onToast("Đã xóa thành công yêu cầu SOS.");
             refreshSos();
         } catch (err) {

@@ -53,17 +53,17 @@ export const useHotelConnectApp = (t) => {
     // Lazy load hotel detail (image, description) khi user click vào hotel
     useEffect(() => {
         if (!selectedHotel || !selectedHotel.id) return;
-        
+
         // Nếu đã có image hoặc description thì không cần load lại
         if (selectedHotel.image || selectedHotel.description) return;
-        
+
         let isCancelled = false;
         setIsLoadingDetail(true);
-        
+
         HotelAPI.fetchHotelDetail(selectedHotel.id)
             .then(fullHotel => {
                 if (isCancelled || !fullHotel) return;
-                
+
                 // Merge full detail vào selectedHotel
                 setSelectedHotel(prev => {
                     if (!prev || prev.id !== fullHotel.id) return prev;
@@ -76,7 +76,7 @@ export const useHotelConnectApp = (t) => {
             .finally(() => {
                 if (!isCancelled) setIsLoadingDetail(false);
             });
-        
+
         return () => { isCancelled = true; };
     }, [selectedHotel?.id]);
 
@@ -152,18 +152,18 @@ export const useHotelConnectApp = (t) => {
 
             // Sử dụng Bulk API để load tất cả hotels trong 1 request (nhanh hơn nhiều)
             try {
-                const locationIdsToFetch = filterLocationIds.includes("all") 
-                    ? ['all'] 
+                const locationIdsToFetch = filterLocationIds.includes("all")
+                    ? ['all']
                     : filterLocationIds;
-                
+
                 accumulatedHotels = await HotelAPI.fetchHotelsBulk(locationIdsToFetch);
-                
+
                 if (!ignore) {
                     setHotels([...accumulatedHotels]);
                 }
             } catch (bulkError) {
                 console.warn('Bulk API failed, fallback to sequential loading:', bulkError);
-                
+
                 // Fallback: Load từng file nếu bulk API không hoạt động
                 const filePathsToFetch = filterLocationIds.includes("all")
                     ? provinces.map(p => p.filePathId).filter(Boolean)
@@ -244,9 +244,9 @@ export const useHotelConnectApp = (t) => {
             isInitialMountUrl.current = false;
             return;
         }
-        
+
         const url = new URL(window.location);
-        
+
         if (selectedHotel) {
             localStorage.setItem('luquan_last_selected_hotel_id', selectedHotel.id);
             url.searchParams.set('hotel', selectedHotel.id);
@@ -295,7 +295,7 @@ export const useHotelConnectApp = (t) => {
         if (normalizedSearchTerm) {
             searchResults = searchResults.filter(hotel => {
                 return removeVietnameseTones(hotel.name || "").includes(normalizedSearchTerm) ||
-                       removeVietnameseTones(decodeBase64(hotel.address) || "").includes(normalizedSearchTerm);
+                    removeVietnameseTones(decodeBase64(hotel.address) || "").includes(normalizedSearchTerm);
             });
         }
 
@@ -318,7 +318,7 @@ export const useHotelConnectApp = (t) => {
 
     const handleUserLocationUpdate = useCallback((loc) => {
         if (!provinces || provinces.length === 0) return;
-        
+
         let minDistance = Infinity;
 
         const distances = provinces.map(schema => {
@@ -338,7 +338,7 @@ export const useHotelConnectApp = (t) => {
                 if (prev.includes('all')) return prev;
                 const isSame = prev.length === nearbyIds.length && prev.every(id => nearbyIds.includes(id));
                 if (isSame) return prev;
-                
+
                 setToastMessage(`Đang tải dữ liệu lân cận: ${nearbyNames}...`);
                 return nearbyIds;
             });
@@ -434,7 +434,7 @@ export const useHotelConnectApp = (t) => {
         if (!window.confirm("HÀNH ĐỘNG NÀY KHÔNG THỂ HOÀN TÁC! Bạn có chắc chắn muốn XÓA VĨNH VIỄN khách sạn này?")) {
             return;
         }
-        
+
         HotelAPI.deleteHotel(id)
             .then(() => {
                 setHotels(prev => prev.filter(h => h.id !== id));
@@ -447,10 +447,10 @@ export const useHotelConnectApp = (t) => {
     };
 
     const onProcessReport = (hotelId) => {
-        const hotelToEdit = hotels.find(h => h.id === hotelId) || 
-                            pendingRequests.find(h => h.id === hotelId) ||
-                            pendingReviewHotels.find(h => h.id === hotelId);
-        
+        const hotelToEdit = hotels.find(h => h.id === hotelId) ||
+            pendingRequests.find(h => h.id === hotelId) ||
+            pendingReviewHotels.find(h => h.id === hotelId);
+
         if (hotelToEdit) {
             setEditingHotel(hotelToEdit);
         } else {
@@ -492,7 +492,7 @@ export const useHotelConnectApp = (t) => {
         if (!window.confirm(`Bạn có chắc chắn muốn tạm ẩn khách sạn "${hotel.name}" khỏi bản đồ?`)) {
             return;
         }
-        
+
         HotelAPI.setHotelStatus(hotel.id, 'inactive')
             .then((response) => {
                 setHotels(prev => prev.map(h => h.id === hotel.id ? (response.data || { ...h, status: 'inactive' }) : h));
@@ -510,7 +510,7 @@ export const useHotelConnectApp = (t) => {
         if (!window.confirm("Bạn có chắc chắn muốn đưa khách sạn này vào thùng rác? Lữ quán sẽ chuyển sang trạng thái 'deleted' và tự động xóa vĩnh viễn sau 6 tháng.")) {
             return;
         }
-        
+
         HotelAPI.setHotelStatus(id, 'deleted')
             .then((response) => {
                 setHotels(prev => prev.map(h => h.id === id ? (response.data || { ...h, status: 'deleted' }) : h));
