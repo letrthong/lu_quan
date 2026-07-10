@@ -9,7 +9,6 @@ from hotel_constants import HOTEL_CONFIG_DIR
 
 SOS_FILE_PATH = os.path.join(HOTEL_CONFIG_DIR, "sos_requests.json")
 SOS_HISTORY_FILE_PATH = os.path.join(HOTEL_CONFIG_DIR, "sos_history.json")
-SOS_COMMENTS_FILE_PATH = os.path.join(HOTEL_CONFIG_DIR, "sos_comments.json")
 sos_lock = Lock()
 comments_lock = Lock()
 
@@ -308,23 +307,30 @@ def delete_sos(sos_id):
 
     raise KeyError("Không tìm thấy yêu cầu SOS")
 
-def read_sos_comments():
-    """Reads SOS comments from JSON file storage."""
+def get_sos_comment_file_path(sos_id):
+    """Returns the dedicated JSON file path for comments of a specific SOS request ID."""
+    safe_id = "".join(c for c in sos_id if c.isalnum() or c in ('-','_'))
+    return os.path.join(HOTEL_CONFIG_DIR, f"comments_{safe_id}.json")
+
+def read_sos_comments(sos_id):
+    """Reads SOS comments for a specific SOS request ID."""
+    file_path = get_sos_comment_file_path(sos_id)
     with comments_lock:
-        if not os.path.exists(SOS_COMMENTS_FILE_PATH):
-            return {}
+        if not os.path.exists(file_path):
+            return []
         try:
-            with open(SOS_COMMENTS_FILE_PATH, 'r', encoding='utf-8') as f:
+            with open(file_path, 'r', encoding='utf-8') as f:
                 return json.load(f)
         except Exception:
-            return {}
+            return []
 
-def write_sos_comments(data):
-    """Writes SOS comments to JSON file storage."""
+def write_sos_comments(sos_id, data):
+    """Writes SOS comments for a specific SOS request ID."""
+    file_path = get_sos_comment_file_path(sos_id)
     with comments_lock:
-        os.makedirs(os.path.dirname(SOS_COMMENTS_FILE_PATH), exist_ok=True)
+        os.makedirs(os.path.dirname(file_path), exist_ok=True)
         try:
-            with open(SOS_COMMENTS_FILE_PATH, 'w', encoding='utf-8') as f:
+            with open(file_path, 'w', encoding='utf-8') as f:
                 json.dump(data, f, ensure_ascii=False, indent=4)
             return True
         except Exception as e:
@@ -333,17 +339,14 @@ def write_sos_comments(data):
 
 def get_sos_comments(sos_id):
     """Returns all comments for the specified SOS request ID."""
-    comments = read_sos_comments()
-    return comments.get(sos_id, [])
+    return read_sos_comments(sos_id)
 
 def add_sos_comment(sos_id, author, message, is_admin_flag):
     """Creates a new comment for the specified SOS request."""
     if not message.strip():
         raise ValueError("Nội dung bình luận không được để trống")
     
-    comments = read_sos_comments()
-    if sos_id not in comments:
-        comments[sos_id] = []
+    comments = read_sos_comments(sos_id)
         
     new_comment = {
         "id": str(uuid.uuid4()),
@@ -353,15 +356,18 @@ def add_sos_comment(sos_id, author, message, is_admin_flag):
         "isAdmin": bool(is_admin_flag)
     }
     
-    comments[sos_id].append(new_comment)
-    write_sos_comments(comments)
+    comments.append(new_comment)
+    write_sos_comments(sos_id, comments)
     return new_comment
 
 def delete_sos_comments(sos_id):
     """Deletes all comments associated with the specified SOS request ID."""
-    comments = read_sos_comments()
-    if sos_id in comments:
-        del comments[sos_id]
-        write_sos_comments(comments)
-        return True
+    file_path = get_sos_comment_file_path(sos_id)
+    with comments_lock:
+        if os.path.exists(file_path):
+            try:
+                os.remove(file_path)
+                return True
+            except Exception as e:
+                print(f"Error deleting comments file {file_path}: {e}")
     return False
