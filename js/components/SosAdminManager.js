@@ -79,9 +79,14 @@ const SosAdminManager = ({ sosRequests, refreshSos, onToast, onSelectSOS }) => {
     };
 
     const handleLocateClick = (sos) => {
-        setActiveDetailSos(sos);
-        if (onSelectSOS) {
-            onSelectSOS(sos);
+        if (window.innerWidth < 768) {
+            // Mobile: only show the details overlay dialog
+            setActiveDetailSos(sos);
+        } else {
+            // Desktop: only center map and show card overlay on the map
+            if (onSelectSOS) {
+                onSelectSOS(sos);
+            }
         }
     };
 
