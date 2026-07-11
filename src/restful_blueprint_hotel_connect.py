@@ -1148,7 +1148,7 @@ def update_sos_request(sos_id):
     
     new_status = req_data['status']
     try:
-        updated = sos_service.update_sos_status(sos_id, new_status)
+        updated = sos_service.update_sos_status(sos_id, new_status, is_admin_flag=is_admin)
         return jsonify({
             HotelField.SUCCESS: True,
             HotelField.MESSAGE: f"Cập nhật trạng thái thành công sang {new_status}",

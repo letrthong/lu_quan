@@ -124,4 +124,25 @@ test('api - submitSosRequest success', async (t) => {
         global.fetch = originalFetch;
     }
 });
-
+test('api - updateSosStatus success', async (t) => {
+    const originalFetch = global.fetch;
+    
+    // Test with isAdmin = true
+    let calledUrlWithAdmin = null;
+    global.fetch = async (url, options) => {
+        calledUrlWithAdmin = url;
+        assert.strictEqual(options.method, 'PUT');
+        assert.deepStrictEqual(JSON.parse(options.body), { status: 'resolved' });
+        return {
+            ok: true,
+            json: async () => ({ success: true })
+        };
+    };
+    try {
+        const res = await HotelAPI.updateSosStatus('sos1', 'resolved', true);
+        assert.deepStrictEqual(res, { success: true });
+        assert.ok(calledUrlWithAdmin.includes('/api/hotelconnect/v1/sos/sos1?is_admin=true'));
+    } finally {
+        global.fetch = originalFetch;
+    }
+});

@@ -127,6 +127,17 @@ const MainApp = () => {
         }
     }, [sosRequests]);
 
+    useEffect(() => {
+        if (selectedSOS && sosRequests) {
+            const updated = sosRequests.find(s => s.id === selectedSOS.id);
+            if (updated) {
+                if (updated.status !== selectedSOS.status || updated.updatedAt !== selectedSOS.updatedAt) {
+                    setSelectedSOS(updated);
+                }
+            }
+        }
+    }, [sosRequests]);
+
     return (
         <div className="absolute inset-0 flex flex-col bg-stone-50 text-stone-900 overflow-hidden font-sans select-none">
             <Header
@@ -207,7 +218,15 @@ const MainApp = () => {
                         {isAdmin && adminTab === 'reports' ? (
                             <ReportManager reports={reports} setFilterCity={(id) => setFilterLocationIds([id])} onToast={setToastMessage} onReportDeleted={refreshReports} onProcessReport={onProcessReport} />
                         ) : isAdmin && adminTab === 'sos' ? (
-                            <SosAdminManager sosRequests={sosRequests} refreshSos={refreshSos} onToast={setToastMessage} onSelectSOS={setSelectedSOS} />
+                            <SosAdminManager 
+                                sosRequests={sosRequests} 
+                                refreshSos={refreshSos} 
+                                onToast={setToastMessage} 
+                                onSelectSOS={(sos) => {
+                                    setSelectedSOS(sos);
+                                    setViewMode('sos');
+                                }} 
+                            />
                         ) : (
                             <div className="p-3 space-y-3">
                                 {isLoading ? (

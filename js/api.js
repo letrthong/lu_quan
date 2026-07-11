@@ -341,8 +341,8 @@ const HotelAPI = {
     },
 
     // Cập nhật trạng thái yêu cầu SOS (ví dụ: resolved)
-    updateSosStatus: async (sosId, status) => {
-        const response = await fetch(`${HotelAPI.baseUrl}/api/hotelconnect/v1/sos/${sosId}`, {
+    updateSosStatus: async (sosId, status, isAdmin = false) => {
+        const response = await fetch(`${HotelAPI.baseUrl}/api/hotelconnect/v1/sos/${sosId}?is_admin=${isAdmin}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ status })

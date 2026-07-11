@@ -97,7 +97,7 @@ const SoSComponents = ({ setViewMode, isActive, onToast, isSOSModalOpen, setIsSO
         } else {
             setSosComments([]);
         }
-    }, [selectedSOS?.id]);
+    }, [selectedSOS?.id, selectedSOS?.status, selectedSOS?.updatedAt]);
 
     useEffect(() => {
         if (selectedSOS && selectedSOS.id && mapInstance.current) {
@@ -108,10 +108,12 @@ const SoSComponents = ({ setViewMode, isActive, onToast, isSOSModalOpen, setIsSO
     // Fetch SOS requests
     const fetchSos = async () => {
         try {
-            const data = await HotelAPI.fetchSosRequests();
-            // Filter active requests (pending / processing)
-            const activeSos = data.filter(item => item.status === 'pending' || item.status === 'processing');
-            setSosRequests(activeSos);
+            const data = await HotelAPI.fetchSosRequests(isAdmin);
+            // If admin, show all (including resolved/cancelled), otherwise only pending/processing
+            const filteredSos = isAdmin 
+                ? data 
+                : data.filter(item => item.status === 'pending' || item.status === 'processing');
+            setSosRequests(filteredSos);
         } catch (err) {
             console.error("Lỗi khi tải danh sách cứu hộ SOS:", err);
         }
@@ -288,6 +290,14 @@ const SoSComponents = ({ setViewMode, isActive, onToast, isSOSModalOpen, setIsSO
                 bgColor = 'bg-red-600 scale-125';
                 pulseAnim = 'animate-ping scale-150';
                 labelStyle = 'border-red-400 text-red-800 bg-red-100 font-bold';
+            } else if (sos.status === 'resolved') {
+                bgColor = 'bg-emerald-600';
+                pulseAnim = '';
+                labelStyle = 'border-emerald-200 text-emerald-800 bg-emerald-100';
+            } else if (sos.status === 'cancelled') {
+                bgColor = 'bg-stone-500';
+                pulseAnim = '';
+                labelStyle = 'border-stone-300 text-stone-700 bg-stone-100';
             } else if (elapsedHrs >= 12) {
                 bgColor = 'bg-red-600';
                 pulseAnim = 'animate-ping';
@@ -366,6 +376,9 @@ const SoSComponents = ({ setViewMode, isActive, onToast, isSOSModalOpen, setIsSO
     };
 
     const handleResolveSOS = async (sosId) => {
+        if (!window.confirm("Bạn có chắc chắn muốn đánh dấu ca cứu nạn này là ĐÃ ĐƯỢC CỨU? Yêu cầu này sẽ được đưa vào lịch sử lưu trữ.")) {
+            return;
+        }
         try {
             await HotelAPI.updateSosStatus(sosId, 'resolved', isAdmin);
             if (onToast) onToast("🎉 Đánh dấu đã cứu nạn thành công!");
@@ -510,10 +523,28 @@ const SoSComponents = ({ setViewMode, isActive, onToast, isSOSModalOpen, setIsSO
                     <div className="absolute bottom-24 left-4 right-4 z-[1000] bg-white rounded-3xl shadow-[0_10px_40px_rgba(0,0,0,0.15)] border border-red-100 p-5 flex flex-col gap-3 transition-all duration-300 pointer-events-auto max-h-[65vh] overflow-y-auto scrollbar-hide">
                         <div className="flex justify-between items-start">
                             <div>
-                                <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider ${selectedSOS.urgency === 'high' ? 'bg-red-100 text-red-700' : (selectedSOS.urgency === 'medium' ? 'bg-orange-100 text-orange-700' : 'bg-yellow-100 text-yellow-700')
-                                    }`}>
-                                    SOS: {selectedSOS.urgency === 'high' ? 'Rất khẩn cấp' : (selectedSOS.urgency === 'medium' ? 'Cần cứu hộ' : 'Hỗ trợ')}
-                                </span>
+                                <div className="flex gap-1.5 items-center flex-wrap">
+                                    <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider ${selectedSOS.urgency === 'high' ? 'bg-red-100 text-red-700' : (selectedSOS.urgency === 'medium' ? 'bg-orange-100 text-orange-700' : 'bg-yellow-100 text-yellow-700')
+                                        }`}>
+                                        SOS: {selectedSOS.urgency === 'high' ? 'Rất khẩn cấp' : (selectedSOS.urgency === 'medium' ? 'Cần cứu hộ' : 'Hỗ trợ')}
+                                    </span>
+                                    {selectedSOS.status && (
+                                        <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider border ${
+                                            selectedSOS.status === 'pending' ? 'bg-red-50 text-red-700 border-red-100' : 
+                                            selectedSOS.status === 'processing' ? 'bg-orange-50 text-orange-700 border-orange-100' : 
+                                            selectedSOS.status === 'resolved' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : 
+                                            'bg-stone-50 text-stone-600 border-stone-200'
+                                        }`}>
+                                            Trạng thái: {
+                                                selectedSOS.status === 'pending' ? 'Đang Chờ' : 
+                                                selectedSOS.status === 'processing' ? 'Đang Xử Lý' : 
+                                                selectedSOS.status === 'resolved' ? 'Đã Hỗ Trợ' : 
+                                                selectedSOS.status === 'cancelled' ? 'Đã Hủy' : 
+                                                selectedSOS.status
+                                            }
+                                        </span>
+                                    )}
+                                </div>
                                 <h4 className="text-sm font-black text-stone-800 mt-1 flex items-center gap-1.5 leading-none">
                                     <span className="w-2.5 h-2.5 rounded-full bg-red-600 animate-ping"></span>
                                     {selectedSOS.name}

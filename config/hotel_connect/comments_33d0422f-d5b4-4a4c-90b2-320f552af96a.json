@@ -1,0 +1,37 @@
+[
+    {
+        "id": "a601fb4b-3030-44fb-a36b-cfadd2b230af",
+        "author": "Admin",
+        "message": "Đã cập nhật trạng thái thành: Đang xử lý ⏳",
+        "createdAt": "2026-07-11T05:04:25.821725+00:00",
+        "isAdmin": true
+    },
+    {
+        "id": "8103022e-7bf1-4672-a647-a2ce2f9adb05",
+        "author": "Cứu hộ (Ban chỉ huy)",
+        "message": "x",
+        "createdAt": "2026-07-11T05:06:06.317533+00:00",
+        "isAdmin": true
+    },
+    {
+        "id": "82928721-05ec-498b-8a91-c5792eea2078",
+        "author": "Cứu hộ (Ban chỉ huy)",
+        "message": "xx",
+        "createdAt": "2026-07-11T05:06:10.583300+00:00",
+        "isAdmin": true
+    },
+    {
+        "id": "8aa4a74c-09f2-4e25-a8c6-6cb5a354e74c",
+        "author": "Cứu hộ (Ban chỉ huy)",
+        "message": "sss",
+        "createdAt": "2026-07-11T05:10:55.878071+00:00",
+        "isAdmin": true
+    },
+    {
+        "id": "24f251b8-9fe7-4fd7-8151-1939078b8973",
+        "author": "Admin",
+        "message": "Đã cập nhật trạng thái thành: Đã hỗ trợ thành công ✅",
+        "createdAt": "2026-07-11T05:16:30.406844+00:00",
+        "isAdmin": true
+    }
+]

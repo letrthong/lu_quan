@@ -232,7 +232,7 @@ def create_sos(sos_data, reporter_ip):
     write_sos(requests)
     return new_request
 
-def update_sos_status(sos_id, status):
+def update_sos_status(sos_id, status, is_admin_flag=False):
     """Updates the status of an SOS request. If status is resolved or cancelled, move to history."""
     if status not in ['pending', 'processing', 'resolved', 'cancelled']:
         raise ValueError("Trạng thái SOS không hợp lệ")
@@ -281,6 +281,23 @@ def update_sos_status(sos_id, status):
         
         if not found:
             raise KeyError("Không tìm thấy yêu cầu SOS")
+
+    # Add a system comment recording the status change as history
+    if found:
+        status_labels = {
+            'pending': 'Đang chờ xử lý',
+            'processing': 'Đang xử lý ⏳',
+            'resolved': 'Đã hỗ trợ thành công ✅',
+            'cancelled': 'Đã hủy ❌'
+        }
+        label = status_labels.get(status, status)
+        author = "Admin" if is_admin_flag else "Hệ thống"
+        msg = f"Đã cập nhật trạng thái thành: {label}"
+        
+        try:
+            add_sos_comment(sos_id, author, msg, is_admin_flag)
+        except Exception as e:
+            print(f"Error adding status history comment for SOS {sos_id}: {e}")
 
     return updated_req
 
