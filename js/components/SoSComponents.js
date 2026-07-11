@@ -50,6 +50,8 @@ const getTimeAgo = (dateStr) => {
     return `${hrs} giờ trước`;
 };
 
+const DEFAULT_CENTER = { lat: 16.047079, lng: 108.206230 }; // Đà Nẵng, Việt Nam
+
 const SoSComponents = ({ setViewMode, isActive, onToast, isSOSModalOpen, setIsSOSModalOpen, isAdmin, selectedSOS: propSelectedSOS, onSelectSOS }) => {
     const [userLocation, setUserLocation] = useState(null);
     const [searchLocation, setSearchLocation] = useState(null);
@@ -70,6 +72,7 @@ const SoSComponents = ({ setViewMode, isActive, onToast, isSOSModalOpen, setIsSO
     const [isSubmittingComment, setIsSubmittingComment] = useState(false);
     const [sosForm, setSosForm] = useState({ name: '', phone: '', message: '', urgency: 'medium', image: null });
     const [isSubmittingSOS, setIsSubmittingSOS] = useState(false);
+    const [mapReady, setMapReady] = useState(false);
 
     const mapRef = useRef(null);
     const mapInstance = useRef(null);
@@ -101,9 +104,32 @@ const SoSComponents = ({ setViewMode, isActive, onToast, isSOSModalOpen, setIsSO
 
     useEffect(() => {
         if (selectedSOS && selectedSOS.id && mapInstance.current) {
-            mapInstance.current.flyTo([selectedSOS.lat, selectedSOS.lng], 15, { animate: true, duration: 0.8 });
+            const lat = Number(selectedSOS.lat);
+            const lng = Number(selectedSOS.lng);
+            if (!isNaN(lat) && !isNaN(lng)) {
+                // Dừng mọi hiệu ứng di chuyển/zoom đang chạy
+                mapInstance.current.stop();
+
+                // Cập nhật tâm tìm kiếm để hiển thị các SOS khác xung quanh ca này
+                setSearchLocation({ lat, lng });
+
+                // Lấy kích thước map hiện tại để tránh chia cho 0 trong tính toán flyTo của Leaflet
+                const mapSize = mapInstance.current.getSize();
+                const isMapZeroSize = mapSize.x === 0 || mapSize.y === 0;
+
+                // Tính khoảng cách từ tâm bản đồ hiện tại đến điểm cần tới
+                const mapCenter = mapInstance.current.getCenter();
+                const distance = calculateDistance(mapCenter.lat, mapCenter.lng, lat, lng);
+
+                // Nếu kích thước map = 0 hoặc khoảng cách quá lớn (>100km), sử dụng setView trực tiếp để tránh lỗi NaN và tối ưu tốc độ
+                if (isMapZeroSize || distance > 100) {
+                    mapInstance.current.setView([lat, lng], 15);
+                } else {
+                    mapInstance.current.flyTo([lat, lng], 15, { animate: true, duration: 0.8 });
+                }
+            }
         }
-    }, [selectedSOS?.id]);
+    }, [selectedSOS?.id, mapReady]);
 
     // Fetch SOS requests
     const fetchSos = async () => {
@@ -193,66 +219,95 @@ const SoSComponents = ({ setViewMode, isActive, onToast, isSOSModalOpen, setIsSO
 
     const nearbySosRequests = useMemo(() => {
         const center = searchLocation || userLocation;
-        if (!center || !sosRequests) return [];
+        
+        // Nếu không có tâm tìm kiếm (GPS chưa có), nhưng có selectedSOS thì hiển thị selectedSOS
+        if (!center) {
+            return selectedSOS ? [selectedSOS] : [];
+        }
 
-        return sosRequests.map(sos => {
+        if (!sosRequests) return [];
+
+        const list = sosRequests.map(sos => {
             const distance = calculateDistance(center.lat, center.lng, sos.lat, sos.lng);
             return { ...sos, distance };
-        }).filter(sos => sos.distance <= radius);
-    }, [searchLocation, userLocation, sosRequests, radius]);
+        }).filter(sos => {
+            // Luôn hiển thị ca đang được định vị/lọc trên bản đồ kể cả khi ở khoảng cách rất xa (như 1000km)
+            if (selectedSOS && String(sos.id) === String(selectedSOS.id)) return true;
+            return sos.distance <= radius;
+        });
+
+        // Đảm bảo selectedSOS luôn có mặt trong danh sách vẽ markers nếu nó tồn tại
+        if (selectedSOS && !list.some(sos => String(sos.id) === String(selectedSOS.id))) {
+            list.push(selectedSOS);
+        }
+
+        return list;
+    }, [searchLocation, userLocation, sosRequests, radius, selectedSOS?.id]);
 
     // Initialize Map
     useEffect(() => {
-        if (!isActive || !userLocation || !mapRef.current) return;
+        if (!isActive || !mapRef.current) return;
+
+        const initialCenter = userLocation || (isAdmin ? DEFAULT_CENTER : null);
+        if (!initialCenter) return;
 
         if (!mapInstance.current) {
-            mapInstance.current = window.L.map(mapRef.current, { zoomControl: false }).setView([userLocation.lat, userLocation.lng], 12);
+            mapInstance.current = window.L.map(mapRef.current, { zoomControl: false }).setView([initialCenter.lat, initialCenter.lng], userLocation ? 12 : 6);
             window.L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                 attribution: '&copy; OpenStreetMap'
             }).addTo(mapInstance.current);
 
             markersGroupRef.current = window.L.layerGroup().addTo(mapInstance.current);
 
-            const userIcon = window.L.divIcon({
-                className: "",
-                html: `<div class="relative flex items-center justify-center w-12 h-12 cursor-pointer group" title="Vị trí của bạn">
-                        <div class="absolute w-full h-full bg-blue-500 rounded-full animate-ping opacity-30"></div>
-                        <div class="absolute w-6 h-6 bg-white rounded-full shadow-md"></div>
-                        <div class="relative w-4 h-4 bg-blue-500 rounded-full shadow-inner group-hover:scale-110 transition-transform"></div>
-                       </div>`,
-                iconSize: [48, 48],
-                iconAnchor: [24, 24]
-            });
-            userMarkerRef.current = window.L.marker([userLocation.lat, userLocation.lng], { icon: userIcon, zIndexOffset: 1000 }).addTo(mapInstance.current);
+            if (userLocation) {
+                const userIcon = window.L.divIcon({
+                    className: "",
+                    html: `<div class="relative flex items-center justify-center w-12 h-12 cursor-pointer group" title="Vị trí của bạn">
+                            <div class="absolute w-full h-full bg-blue-500 rounded-full animate-ping opacity-30"></div>
+                            <div class="absolute w-6 h-6 bg-white rounded-full shadow-md"></div>
+                            <div class="relative w-4 h-4 bg-blue-500 rounded-full shadow-inner group-hover:scale-110 transition-transform"></div>
+                           </div>`,
+                    iconSize: [48, 48],
+                    iconAnchor: [24, 24]
+                });
+                userMarkerRef.current = window.L.marker([userLocation.lat, userLocation.lng], { icon: userIcon, zIndexOffset: 1000 }).addTo(mapInstance.current);
 
-            userMarkerRef.current.on('click', () => {
-                const currentPos = userMarkerRef.current.getLatLng();
-                if (circleRef.current) {
-                    mapInstance.current?.fitBounds(circleRef.current.getBounds(), { padding: [20, 20], animate: true, duration: 0.5 });
-                } else {
-                    mapInstance.current?.flyTo(currentPos, 15, { animate: true, duration: 0.5 });
-                }
-            });
+                userMarkerRef.current.on('click', () => {
+                    const currentPos = userMarkerRef.current.getLatLng();
+                    if (circleRef.current) {
+                        mapInstance.current?.fitBounds(circleRef.current.getBounds(), { padding: [20, 20], animate: true, duration: 0.5 });
+                    } else {
+                        mapInstance.current?.flyTo(currentPos, 15, { animate: true, duration: 0.5 });
+                    }
+                });
 
-            circleRef.current = window.L.circle([userLocation.lat, userLocation.lng], {
-                radius: radius * 1000,
-                color: '#ef4444',
-                fillColor: '#ef4444',
-                fillOpacity: 0.03,
-                weight: 1.5,
-                dashArray: '5, 5'
-            }).addTo(mapInstance.current);
+                circleRef.current = window.L.circle([userLocation.lat, userLocation.lng], {
+                    radius: radius * 1000,
+                    color: '#ef4444',
+                    fillColor: '#ef4444',
+                    fillOpacity: 0.03,
+                    weight: 1.5,
+                    dashArray: '5, 5'
+                }).addTo(mapInstance.current);
+            }
 
             mapInstance.current.on('dragend', () => {
                 const center = mapInstance.current.getCenter();
                 setSearchLocation({ lat: center.lat, lng: center.lng });
             });
 
-            setTimeout(() => mapInstance.current.invalidateSize(), 200);
+            setTimeout(() => {
+                if (mapInstance.current) {
+                    mapInstance.current.invalidateSize();
+                }
+            }, 200);
+            setMapReady(true);
         } else {
-            userMarkerRef.current.setLatLng([userLocation.lat, userLocation.lng]);
+            if (userLocation && userMarkerRef.current) {
+                userMarkerRef.current.setLatLng([userLocation.lat, userLocation.lng]);
+            }
         }
-    }, [isActive, userLocation]);
+    }, [isActive, userLocation, isAdmin]);
 
     // Handle Radius & Circle updates
     useEffect(() => {
@@ -265,6 +320,7 @@ const SoSComponents = ({ setViewMode, isActive, onToast, isSOSModalOpen, setIsSO
 
     useEffect(() => {
         if (circleRef.current && mapInstance.current) {
+            mapInstance.current.stop();
             mapInstance.current.setMaxZoom(18);
             mapInstance.current.fitBounds(circleRef.current.getBounds(), { padding: [20, 20], maxZoom: 15, animate: true, duration: 0.5 });
         }
@@ -274,6 +330,8 @@ const SoSComponents = ({ setViewMode, isActive, onToast, isSOSModalOpen, setIsSO
     useEffect(() => {
         if (!mapInstance.current || !markersGroupRef.current) return;
 
+        // Dừng mọi hiệu ứng đang chạy trước khi dọn dẹp và vẽ lại layer
+        mapInstance.current.stop();
         markersGroupRef.current.clearLayers();
 
         nearbySosRequests.forEach(sos => {
@@ -284,7 +342,7 @@ const SoSComponents = ({ setViewMode, isActive, onToast, isSOSModalOpen, setIsSO
             let labelStyle = 'border-stone-200 text-stone-700 bg-stone-50';
 
             const isUserOwnSos = sos.deviceId === localStorage.getItem('luquan_sos_device_id');
-            const isCurrentlySelected = selectedSOS && selectedSOS.id === sos.id;
+            const isCurrentlySelected = selectedSOS && String(selectedSOS.id) === String(sos.id);
 
             if (isCurrentlySelected) {
                 bgColor = 'bg-red-600 scale-125';
@@ -411,7 +469,7 @@ const SoSComponents = ({ setViewMode, isActive, onToast, isSOSModalOpen, setIsSO
         }
     };
 
-    if (isLoading && !userLocation) {
+    if (isLoading && !userLocation && !isAdmin) {
         return (
             <div className="flex flex-col items-center justify-center h-full p-4 text-center text-stone-500 bg-stone-50">
                 <Icon name="loader" size={32} className="animate-spin mb-2 text-red-600" />
@@ -420,7 +478,7 @@ const SoSComponents = ({ setViewMode, isActive, onToast, isSOSModalOpen, setIsSO
         );
     }
 
-    if (error && !userLocation) {
+    if (error && !userLocation && !isAdmin) {
         return (
             <div className="flex flex-col items-center justify-center h-full p-4 text-center text-red-500 bg-stone-50">
                 <Icon name="map-pin-off" size={32} className="mb-4" />
@@ -505,10 +563,13 @@ const SoSComponents = ({ setViewMode, isActive, onToast, isSOSModalOpen, setIsSO
                     <button
                         onClick={() => {
                             setSearchLocation(null);
-                            if (circleRef.current && mapInstance.current) {
-                                mapInstance.current.fitBounds(circleRef.current.getBounds(), { padding: [20, 20], animate: true, duration: 0.5 });
-                            } else {
-                                mapInstance.current?.flyTo([userLocation.lat, userLocation.lng], 15, { animate: true, duration: 0.5 });
+                            if (mapInstance.current) {
+                                mapInstance.current.stop();
+                                if (circleRef.current) {
+                                    mapInstance.current.fitBounds(circleRef.current.getBounds(), { padding: [20, 20], animate: true, duration: 0.5 });
+                                } else if (userLocation) {
+                                    mapInstance.current.flyTo([userLocation.lat, userLocation.lng], 15, { animate: true, duration: 0.5 });
+                                }
                             }
                         }}
                         className="w-12 h-12 bg-white text-stone-600 rounded-full flex items-center justify-center shadow-[0_8px_30px_rgba(0,0,0,0.15)] border border-stone-100 pointer-events-auto cursor-pointer hover:text-red-600 hover:bg-stone-50 active:scale-95 transition-all group"
