@@ -1,0 +1,16 @@
+[
+    {
+        "id": "3a560e5f-bbcd-4bb1-a925-3f992ffcd85a",
+        "author": "Hệ thống",
+        "message": "Đã cập nhật trạng thái thành: Đang xử lý ⏳",
+        "createdAt": "2026-07-13T16:27:47.477054+00:00",
+        "isAdmin": false
+    },
+    {
+        "id": "f7205681-5723-4fbf-bbb8-5d9f5a41f855",
+        "author": "Hệ thống",
+        "message": "Đã cập nhật trạng thái thành: Đã hỗ trợ thành công ✅",
+        "createdAt": "2026-07-13T16:27:47.493987+00:00",
+        "isAdmin": false
+    }
+]

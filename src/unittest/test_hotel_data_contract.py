@@ -379,5 +379,100 @@ class TestCacheVersionFile(unittest.TestCase):
                     "updated_at phải là string")
 
 
+class TestHotelSchemaContract(unittest.TestCase):
+    """
+    Contract tests cho file hotel_schema.json.
+    Đảm bảo định dạng, các trường bắt buộc, tính độc nhất và sự nhất quán
+    giữa hotel_schema.json và các file dữ liệu khách sạn tương ứng.
+    """
+    
+    @classmethod
+    def setUpClass(cls):
+        cls.schema_file = os.path.join(HOTEL_CONNECT_DIR, 'hotel_schema.json')
+        cls.schemas = []
+        if os.path.exists(cls.schema_file):
+            try:
+                with open(cls.schema_file, 'r', encoding='utf-8') as f:
+                    cls.schemas = json.load(f)
+            except Exception as e:
+                print(f"Warning: Could not load schema file: {e}")
+                
+    def test_schema_file_exists(self):
+        """Đảm bảo hotel_schema.json tồn tại"""
+        self.assertTrue(os.path.exists(self.schema_file), "hotel_schema.json không tồn tại")
+        
+    def test_schema_is_list(self):
+        """Dữ liệu schema phải là một list"""
+        self.assertIsInstance(self.schemas, list, "Schema phải là một JSON array/list")
+        self.assertGreater(len(self.schemas), 0, "Schema không được rỗng")
+        
+    def test_schema_required_fields(self):
+        """Mỗi khu vực phải có đủ các trường bắt buộc"""
+        required_fields = ['id', 'filePathId', 'locationName', 'lat', 'lng', 'radius']
+        for idx, schema in enumerate(self.schemas):
+            for field in required_fields:
+                self.assertIn(field, schema, 
+                    f"Khu vực thứ {idx + 1} thiếu trường bắt buộc: {field}")
+                
+    def test_schema_data_types(self):
+        """Đảm bảo kiểu dữ liệu các trường trong schema đúng chuẩn"""
+        for schema in self.schemas:
+            loc_name = schema.get('locationName', 'unknown')
+            self.assertIsInstance(schema.get('id'), str, f"id của '{loc_name}' phải là string")
+            self.assertIsInstance(schema.get('filePathId'), str, f"filePathId của '{loc_name}' phải là string")
+            self.assertIsInstance(schema.get('locationName'), str, f"locationName của '{loc_name}' phải là string")
+            self.assertIsInstance(schema.get('lat'), (int, float), f"lat của '{loc_name}' phải là số")
+            self.assertIsInstance(schema.get('lng'), (int, float), f"lng của '{loc_name}' phải là số")
+            self.assertIsInstance(schema.get('radius'), (int, float), f"radius của '{loc_name}' phải là số")
+            
+    def test_schema_uniqueness(self):
+        """Đảm bảo id, filePathId và locationName là duy nhất"""
+        ids = [s.get('id') for s in self.schemas if s.get('id')]
+        file_path_ids = [s.get('filePathId') for s in self.schemas if s.get('filePathId')]
+        location_names = [s.get('locationName').strip() for s in self.schemas if s.get('locationName')]
+        
+        self.assertEqual(len(ids), len(set(ids)), "Có id bị trùng lặp trong hotel_schema.json")
+        self.assertEqual(len(file_path_ids), len(set(file_path_ids)), "Có filePathId bị trùng lặp trong hotel_schema.json")
+        self.assertEqual(len(location_names), len(set(location_names)), "Có locationName bị trùng lặp trong hotel_schema.json")
+        
+    def test_schema_coordinates_in_range(self):
+        """Tọa độ khu vực phải nằm trong phạm vi Việt Nam"""
+        lat_min, lat_max = 8.0, 24.0
+        lng_min, lng_max = 102.0, 110.0
+        for schema in self.schemas:
+            loc_name = schema.get('locationName')
+            lat = float(schema.get('lat'))
+            lng = float(schema.get('lng'))
+            self.assertTrue(lat_min <= lat <= lat_max, f"Khu vực '{loc_name}' có lat={lat} ngoài Việt Nam")
+            self.assertTrue(lng_min <= lng <= lng_max, f"Khu vực '{loc_name}' có lng={lng} ngoài Việt Nam")
+            
+    def test_schema_file_path_format(self):
+        """filePathId phải có định dạng hotel_*.json"""
+        for schema in self.schemas:
+            file_path_id = schema.get('filePathId')
+            self.assertTrue(file_path_id.startswith('hotel_') and file_path_id.endswith('.json'),
+                f"filePathId '{file_path_id}' không đúng định dạng 'hotel_*.json'")
+
+    def test_schema_referential_integrity(self):
+        """
+        Đảm bảo nếu file data của schema tồn tại, các hotel trong file đó
+        phải có locationId khớp với id của schema.
+        """
+        for schema in self.schemas:
+            schema_id = schema.get('id')
+            file_path_id = schema.get('filePathId')
+            full_path = os.path.join(HOTEL_CONNECT_DIR, file_path_id)
+            if os.path.exists(full_path):
+                try:
+                    with open(full_path, 'r', encoding='utf-8') as f:
+                        hotels = json.load(f)
+                    for h in hotels:
+                        self.assertEqual(h.get('locationId'), schema_id,
+                            f"Hotel '{h.get('name')}' trong file '{file_path_id}' có locationId "
+                            f"'{h.get('locationId')}' không khớp với id '{schema_id}' của schema")
+                except Exception as e:
+                    self.fail(f"Lỗi đọc file data '{file_path_id}' của schema: {e}")
+
+
 if __name__ == '__main__':
     unittest.main()

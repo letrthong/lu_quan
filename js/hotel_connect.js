@@ -234,7 +234,7 @@ const MainApp = () => {
                                         <Icon name="loader" size={32} className="mx-auto mb-2 text-stone-400 animate-spin" />
                                         <p className="font-black uppercase text-[9px] tracking-widest italic">Đang tải dữ liệu...</p>
                                     </div>
-                                ) : filterLocationIds.length === 0 ? (
+                                ) : (filterLocationIds.length === 0 && !(isAdmin && (adminTab === 'pending' || adminTab === 'pending_review'))) ? (
                                     <div className="text-center py-20 opacity-40">
                                         <Icon name="map" size={32} className="mx-auto mb-2 text-stone-400" />
                                         <p className="font-black uppercase text-[9px] tracking-widest italic">Vui lòng chọn một khu vực để xem khách sạn</p>
