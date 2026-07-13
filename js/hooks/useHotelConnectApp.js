@@ -88,6 +88,7 @@ export const useHotelConnectApp = (t) => {
             .catch(error => {
                 console.error("Lỗi khi tải danh sách tỉnh:", error);
                 setProvinces([]);
+                setToastMessage(error.message || "Không thể tải danh sách khu vực. Vui lòng thử lại.");
             });
     }, []);
 
@@ -95,7 +96,10 @@ export const useHotelConnectApp = (t) => {
         if (!showSchemaManager) {
             HotelAPI.getSchemas()
                 .then(provincesData => setProvinces(provincesData))
-                .catch(console.error);
+                .catch(error => {
+                    console.error(error);
+                    setToastMessage(error.message || "Không thể tải danh sách khu vực. Vui lòng thử lại.");
+                });
         }
     }, [showSchemaManager]);
 

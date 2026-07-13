@@ -25,8 +25,8 @@ export const useSchemaManager = (api, onToast) => {
             setSchemas(data || []);
             setError(null);
         } catch (err) {
-            setError('Không thể tải danh sách khu vực. Vui lòng thử lại.');
-            onToast('error', 'Lỗi tải dữ liệu khu vực.');
+            setError(err.message || 'Không thể tải danh sách khu vực. Vui lòng thử lại.');
+            onToast('error', err.message || 'Lỗi tải dữ liệu khu vực.');
             console.error(err);
         } finally {
             setIsLoading(false);

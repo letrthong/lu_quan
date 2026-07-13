@@ -241,12 +241,14 @@ const HotelAPI = {
     getSchemas: async () => {
         try {
             const response = await fetch(`${HotelAPI.baseUrl}/api/hotelconnect/v1/schema`);
-            if (!response.ok) throw new Error("Không thể tải dữ liệu cấu hình các tỉnh");
+            if (!response.ok) {
+                throw new Error(`Không thể tải cấu hình các khu vực (Mã lỗi: ${response.status}). Vui lòng tải lại trang hoặc thử lại sau.`);
+            }
             const schemas = await response.json();
             return schemas.sort((a, b) => a.locationName.localeCompare(b.locationName, 'vi'));
         } catch (error) {
             console.error("Lỗi khi lấy danh sách thành phố:", error);
-            return [];
+            throw error;
         }
     },
 
