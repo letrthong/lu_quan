@@ -19,20 +19,77 @@ except ImportError:
     PIL_AVAILABLE = False
 
 def read_sos():
-    """Reads active SOS requests from the JSON storage file."""
+    """Reads active SOS requests from the JSON storage file, moving those updated >120h ago to history."""
     with sos_lock:
         if not os.path.exists(SOS_FILE_PATH):
             return []
         try:
             with open(SOS_FILE_PATH, 'r', encoding='utf-8') as f:
-                return json.load(f)
+                requests = json.load(f)
         except Exception:
             return []
+
+        now = datetime.now(timezone.utc)
+        active = []
+        expired = []
+
+        for req in requests:
+            updated_at_str = req.get('updatedAt')
+            is_expired = False
+            if updated_at_str:
+                try:
+                    if updated_at_str.endswith('Z'):
+                        updated_at_str = updated_at_str[:-1] + '+00:00'
+                    updated_at = datetime.fromisoformat(updated_at_str)
+                    if updated_at.tzinfo is None:
+                        updated_at = updated_at.replace(tzinfo=timezone.utc)
+                    if now - updated_at > timedelta(hours=120):
+                        is_expired = True
+                except (ValueError, TypeError):
+                    pass
+            if is_expired:
+                req['status'] = 'expired'
+                expired.append(req)
+            else:
+                active.append(req)
+
+        if expired:
+            try:
+                with open(SOS_FILE_PATH, 'w', encoding='utf-8') as f:
+                    json.dump(active, f, ensure_ascii=False, indent=4)
+            except Exception as e:
+                print(f"Error updating active SOS requests during cleanup: {e}")
+
+            # Read, append to history, and write history
+            history = []
+            if os.path.exists(SOS_HISTORY_FILE_PATH):
+                try:
+                    with open(SOS_HISTORY_FILE_PATH, 'r', encoding='utf-8') as f:
+                        history = json.load(f)
+                except Exception:
+                    history = []
+
+            history.extend(expired)
+
+            try:
+                dirname = os.path.dirname(SOS_HISTORY_FILE_PATH)
+                if dirname:
+                    os.makedirs(dirname, exist_ok=True)
+                with open(SOS_HISTORY_FILE_PATH, 'w', encoding='utf-8') as f:
+                    json.dump(history, f, ensure_ascii=False, indent=4)
+            except Exception as e:
+                print(f"Error writing SOS history during cleanup: {e}")
+
+            requests = active
+
+        return requests
 
 def write_sos(data):
     """Writes active SOS requests to the JSON storage file."""
     with sos_lock:
-        os.makedirs(os.path.dirname(SOS_FILE_PATH), exist_ok=True)
+        dirname = os.path.dirname(SOS_FILE_PATH)
+        if dirname:
+            os.makedirs(dirname, exist_ok=True)
         try:
             with open(SOS_FILE_PATH, 'w', encoding='utf-8') as f:
                 json.dump(data, f, ensure_ascii=False, indent=4)
@@ -55,7 +112,9 @@ def read_sos_history():
 def write_sos_history(data):
     """Writes archived SOS requests to the JSON history storage file."""
     with sos_lock:
-        os.makedirs(os.path.dirname(SOS_HISTORY_FILE_PATH), exist_ok=True)
+        dirname = os.path.dirname(SOS_HISTORY_FILE_PATH)
+        if dirname:
+            os.makedirs(dirname, exist_ok=True)
         try:
             with open(SOS_HISTORY_FILE_PATH, 'w', encoding='utf-8') as f:
                 json.dump(data, f, ensure_ascii=False, indent=4)
@@ -233,8 +292,8 @@ def create_sos(sos_data, reporter_ip):
     return new_request
 
 def update_sos_status(sos_id, status, is_admin_flag=False):
-    """Updates the status of an SOS request. If status is resolved or cancelled, move to history."""
-    if status not in ['pending', 'processing', 'resolved', 'cancelled']:
+    """Updates the status of an SOS request. If status is resolved, cancelled, or expired, move to history."""
+    if status not in ['pending', 'processing', 'resolved', 'cancelled', 'expired']:
         raise ValueError("Trạng thái SOS không hợp lệ")
 
     requests = read_sos()
@@ -248,8 +307,8 @@ def update_sos_status(sos_id, status, is_admin_flag=False):
             updated_req = req
             found = True
             
-            # If resolved or cancelled, remove from active requests and move to history
-            if status in ['resolved', 'cancelled']:
+            # If resolved, cancelled, or expired, remove from active requests and move to history
+            if status in ['resolved', 'cancelled', 'expired']:
                 requests.pop(i)
                 write_sos(requests)
                 history = read_sos_history()
@@ -288,7 +347,8 @@ def update_sos_status(sos_id, status, is_admin_flag=False):
             'pending': 'Đang chờ xử lý',
             'processing': 'Đang xử lý ⏳',
             'resolved': 'Đã hỗ trợ thành công ✅',
-            'cancelled': 'Đã hủy ❌'
+            'cancelled': 'Đã hủy ❌',
+            'expired': 'Hết hạn (Quá 120h) ⏰'
         }
         label = status_labels.get(status, status)
         author = "Admin" if is_admin_flag else "Hệ thống"

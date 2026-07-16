@@ -131,6 +131,68 @@ class TestSosService(unittest.TestCase):
         self.assertTrue(res)
         mock_write_hist.assert_called_once_with([])
 
+    @patch('sos_service.SOS_FILE_PATH', os.path.abspath('temp_sos.json'))
+    @patch('sos_service.SOS_HISTORY_FILE_PATH', os.path.abspath('temp_history.json'))
+    def test_read_sos_cleanup_expired(self):
+        # Clean up any leftover temp files
+        for p in ['temp_sos.json', 'temp_history.json']:
+            if os.path.exists(p):
+                try:
+                    os.remove(p)
+                except Exception:
+                    pass
+
+        try:
+            now = datetime.now(timezone.utc)
+            expired_time = (now - timedelta(hours=121)).isoformat()
+            active_time = (now - timedelta(hours=5)).isoformat()
+
+            active_data = [
+                {
+                    "id": "expired-id",
+                    "name": "Expired User",
+                    "updatedAt": expired_time,
+                },
+                {
+                    "id": "active-id",
+                    "name": "Active User",
+                    "updatedAt": active_time,
+                }
+            ]
+
+            with open('temp_sos.json', 'w', encoding='utf-8') as f:
+                json.dump(active_data, f)
+
+            with open('temp_history.json', 'w', encoding='utf-8') as f:
+                json.dump([], f)
+
+            # Call read_sos()
+            res = sos_service.read_sos()
+
+            # Assert only the active user is returned
+            self.assertEqual(len(res), 1)
+            self.assertEqual(res[0]['id'], 'active-id')
+
+            # Verify files on disk
+            with open('temp_sos.json', 'r', encoding='utf-8') as f:
+                active_on_disk = json.load(f)
+            self.assertEqual(len(active_on_disk), 1)
+            self.assertEqual(active_on_disk[0]['id'], 'active-id')
+
+            with open('temp_history.json', 'r', encoding='utf-8') as f:
+                history_on_disk = json.load(f)
+            self.assertEqual(len(history_on_disk), 1)
+            self.assertEqual(history_on_disk[0]['id'], 'expired-id')
+            self.assertEqual(history_on_disk[0]['status'], 'expired')
+
+        finally:
+            for p in ['temp_sos.json', 'temp_history.json']:
+                if os.path.exists(p):
+                    try:
+                        os.remove(p)
+                    except Exception:
+                        pass
+
 class TestSosApi(unittest.TestCase):
     def setUp(self):
         self.app = app.test_client()

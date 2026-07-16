@@ -1,33 +1,5 @@
 [
     {
-        "id": "sos-hanoi-01",
-        "name": "Nguyễn Văn A (Hà Nội)",
-        "phone": "0912345678",
-        "lat": 21.028511,
-        "lng": 105.854444,
-        "message": "Nước ngập sâu đến mái nhà, cần cano di tản khẩn cấp khu vực Hoàn Kiếm, Hà Nội!",
-        "urgency": "high",
-        "status": "pending",
-        "createdAt": "2026-07-11T12:00:00.000000+00:00",
-        "updatedAt": "2026-07-11T12:00:00.000000+00:00",
-        "reporterIp": "127.0.0.1",
-        "deviceId": "hanoi-device-01"
-    },
-    {
-        "id": "sos-hue-02",
-        "name": "Trần Thị B (Huế)",
-        "phone": "0987654321",
-        "lat": 16.463713,
-        "lng": 107.590824,
-        "message": "Bị cô lập tại khu vực Vỹ Dạ, Huế. Cần hỗ trợ lương thực và nước uống gấp.",
-        "urgency": "medium",
-        "status": "processing",
-        "createdAt": "2026-07-11T13:30:00.000000+00:00",
-        "updatedAt": "2026-07-11T14:00:00.000000+00:00",
-        "reporterIp": "127.0.0.1",
-        "deviceId": "hue-device-02"
-    },
-    {
         "id": "sos-saigon-03",
         "name": "Lê Văn C (Sài Gòn)",
         "phone": "0909090909",

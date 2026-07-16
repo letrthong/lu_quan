@@ -1133,6 +1133,7 @@ def get_sos_requests():
         logging.error(f"Lỗi khi lấy danh sách SOS: {e}")
         return jsonify({HotelField.ERROR: "Lỗi hệ thống khi tải danh sách"}), 500
 
+
 @hotel_connect_api.route('/sos/<sos_id>', methods=['PUT'])
 def update_sos_request(sos_id):
     is_admin = request.args.get('is_admin', 'false').lower() == 'true'

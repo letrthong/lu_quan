@@ -352,7 +352,7 @@ const SoSComponents = ({ setViewMode, isActive, onToast, isSOSModalOpen, setIsSO
                 bgColor = 'bg-emerald-600';
                 pulseAnim = '';
                 labelStyle = 'border-emerald-200 text-emerald-800 bg-emerald-100';
-            } else if (sos.status === 'cancelled') {
+            } else if (sos.status === 'cancelled' || sos.status === 'expired') {
                 bgColor = 'bg-stone-500';
                 pulseAnim = '';
                 labelStyle = 'border-stone-300 text-stone-700 bg-stone-100';
@@ -601,6 +601,7 @@ const SoSComponents = ({ setViewMode, isActive, onToast, isSOSModalOpen, setIsSO
                                                 selectedSOS.status === 'processing' ? 'Đang Xử Lý' : 
                                                 selectedSOS.status === 'resolved' ? 'Đã Hỗ Trợ' : 
                                                 selectedSOS.status === 'cancelled' ? 'Đã Hủy' : 
+                                                selectedSOS.status === 'expired' ? 'Hết Hạn' : 
                                                 selectedSOS.status
                                             }
                                         </span>

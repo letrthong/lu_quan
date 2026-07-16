@@ -45,7 +45,7 @@ const SosAdminManager = ({ sosRequests, refreshSos, onToast, onSelectSOS }) => {
         if (filterTab === 'active') {
             return sos.status === 'pending' || sos.status === 'processing';
         } else {
-            return sos.status === 'resolved' || sos.status === 'cancelled';
+            return sos.status === 'resolved' || sos.status === 'cancelled' || sos.status === 'expired';
         }
     });
 
@@ -96,6 +96,7 @@ const SosAdminManager = ({ sosRequests, refreshSos, onToast, onSelectSOS }) => {
             case 'processing': return 'Đang Xử Lý';
             case 'resolved': return 'Đã Hỗ Trợ';
             case 'cancelled': return 'Đã Hủy';
+            case 'expired': return 'Hết Hạn';
             default: return status;
         }
     };
@@ -105,6 +106,7 @@ const SosAdminManager = ({ sosRequests, refreshSos, onToast, onSelectSOS }) => {
             case 'pending': return 'bg-red-50 text-red-700 border-red-100';
             case 'processing': return 'bg-orange-50 text-orange-700 border-orange-100';
             case 'resolved': return 'bg-emerald-50 text-emerald-700 border-emerald-100';
+            case 'expired': return 'bg-stone-50 text-stone-600 border-stone-200';
             default: return 'bg-stone-50 text-stone-600 border-stone-200';
         }
     };
@@ -170,7 +172,7 @@ const SosAdminManager = ({ sosRequests, refreshSos, onToast, onSelectSOS }) => {
                             : 'text-stone-500 hover:text-stone-700'
                     }`}
                 >
-                    ✅ Lịch Sử Đã Cứu ({sosRequests.filter(s => s.status === 'resolved' || s.status === 'cancelled').length})
+                    ✅ Lịch Sử Đã Cứu ({sosRequests.filter(s => s.status === 'resolved' || s.status === 'cancelled' || s.status === 'expired').length})
                 </button>
             </div>
 
@@ -186,7 +188,7 @@ const SosAdminManager = ({ sosRequests, refreshSos, onToast, onSelectSOS }) => {
                     <div 
                         key={sos.id} 
                         className={`p-4 bg-white rounded-2xl border shadow-sm transition-all flex flex-col gap-3 relative ${
-                            sos.status === 'processing' ? 'border-orange-200 bg-orange-50/5' : (sos.status === 'resolved' || sos.status === 'cancelled' ? 'border-emerald-100 opacity-60' : 'border-red-100')
+                            sos.status === 'processing' ? 'border-orange-200 bg-orange-50/5' : (sos.status === 'resolved' || sos.status === 'cancelled' || sos.status === 'expired' ? 'border-emerald-100 opacity-60' : 'border-red-100')
                         }`}
                     >
                         <div className="flex justify-between items-start">
@@ -294,6 +296,7 @@ const SosAdminManager = ({ sosRequests, refreshSos, onToast, onSelectSOS }) => {
                                             activeDetailSos.status === 'processing' ? 'Đang Xử Lý' : 
                                             activeDetailSos.status === 'resolved' ? 'Đã Hỗ Trợ' : 
                                             activeDetailSos.status === 'cancelled' ? 'Đã Hủy' : 
+                                            activeDetailSos.status === 'expired' ? 'Hết Hạn' : 
                                             activeDetailSos.status
                                         }
                                     </span>
