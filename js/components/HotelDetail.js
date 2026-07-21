@@ -28,7 +28,7 @@ const StatusBadge = ({ status }) => {
     }
 };
 
-const HotelDetail = ({ hotel, onClose, onShare, formatDate, handleImageError, onToast }) => {
+const HotelDetail = ({ hotel, onClose, onShare, formatDate, handleImageError, onToast, isLoading }) => {
     if (!hotel) return null;
 
     const [showReportForm, setShowReportForm] = useState(false);
@@ -94,9 +94,16 @@ const HotelDetail = ({ hotel, onClose, onShare, formatDate, handleImageError, on
                     </div>
 
                     <div className="mb-6">
-                        <p className="text-stone-600 text-[13px] leading-relaxed bg-stone-50 p-4 rounded-2xl border-2 border-dashed border-stone-200 italic font-medium">
-                            "{decodedDescription}"
-                        </p>
+                        {isLoading && !hotel.description ? (
+                            <div className="text-stone-500 text-[13px] leading-relaxed bg-stone-50 p-4 rounded-2xl border-2 border-dashed border-stone-200 italic font-medium flex items-center justify-center gap-2">
+                                <Icon name="loader" size={16} className="animate-spin text-orange-700" />
+                                <span>Đang tải mô tả...</span>
+                            </div>
+                        ) : (
+                            <p className="text-stone-600 text-[13px] leading-relaxed bg-stone-50 p-4 rounded-2xl border-2 border-dashed border-stone-200 italic font-medium">
+                                "{decodedDescription || "Chưa có mô tả."}"
+                            </p>
+                        )}
                     </div>
 
                     <div className="space-y-3 mb-6 text-center">

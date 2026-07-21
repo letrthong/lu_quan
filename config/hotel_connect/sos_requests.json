@@ -1,16 +1,1 @@
-[
-    {
-        "id": "sos-saigon-03",
-        "name": "Lê Văn C (Sài Gòn)",
-        "phone": "0909090909",
-        "lat": 10.776889,
-        "lng": 106.700806,
-        "message": "Triều cường dâng cao gây ngập nặng tại Quận 1, Sài Gòn. Cần hỗ trợ di chuyển xe cộ và người già.",
-        "urgency": "low",
-        "status": "pending",
-        "createdAt": "2026-07-11T14:45:00.000000+00:00",
-        "updatedAt": "2026-07-11T14:45:00.000000+00:00",
-        "reporterIp": "127.0.0.1",
-        "deviceId": "saigon-device-03"
-    }
-]
+[]

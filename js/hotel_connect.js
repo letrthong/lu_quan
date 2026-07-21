@@ -98,7 +98,8 @@ const MainApp = () => {
         formatDate,
         handleCloseHotelDetail,
         filteredHotels,
-        handleShare
+        handleShare,
+        isLoadingDetail
     } = useHotelConnectApp(t);
     const [isSOSModalOpen, setIsSOSModalOpen] = useState(false);
     const [selectedSOS, setSelectedSOS] = useState(null);
@@ -431,6 +432,7 @@ const MainApp = () => {
                         formatDate={formatDate}
                         handleImageError={handleImageError}
                         onToast={setToastMessage}
+                        isLoading={isLoadingDetail}
                     />
                 )}
 
